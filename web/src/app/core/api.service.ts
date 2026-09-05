@@ -3,9 +3,11 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import {
-  AlertDefinition, AlertSchedule, ChatAnswer, ComplianceRow, DeliveryRow, Diagnosis,
-  DualAnswer, MetricWithContext, Persona, Recipient, ReportFactRow, ReportHistoryRow,
-  ReportOutcome, ReportPreview, Signal, SlaPolicyRow, Subscription, VendorFleetRow,
+  AlertDefinition, AlertSchedule, AlertSummary, ChatAnswer, ComplianceRow, DataHealth,
+  DeliveryRow, InAppAlert,
+  Diagnosis, DualAnswer, MetricWithContext, Persona, PersonaBundle, PersonaScope, Recipient,
+  ReportFactRow, ReportHistoryRow, ReportOutcome, ReportPreview, Signal, SlaPolicyRow,
+  Subscription, VendorFleetRow,
 } from './models';
 
 /**
@@ -23,6 +25,55 @@ export class ApiService {
       if (v !== null && v !== undefined && v !== '') p = p.set(k, String(v));
     }
     return p;
+  }
+
+  // ---- in-app alert inbox ------------------------------------------------
+  /** Alerts delivered into the app rather than to an inbox. */
+  alertInbox(persona?: string, bu?: string, unreadOnly = false): Observable<InAppAlert[]> {
+    return this.http.get<InAppAlert[]>(`${this.base}/api/alerts`,
+      { params: this.params({ persona, businessUnit: bu,
+                              unreadOnly: unreadOnly ? 'true' : undefined }) });
+  }
+
+  alertSummary(): Observable<AlertSummary> {
+    return this.http.get<AlertSummary>(`${this.base}/api/alerts/summary`);
+  }
+
+  markAlertRead(id: number): Observable<unknown> {
+    return this.http.post(`${this.base}/api/alerts/${id}/read`, null);
+  }
+
+  markAllAlertsRead(): Observable<unknown> {
+    return this.http.post(`${this.base}/api/alerts/read-all`, null);
+  }
+
+  dismissAlert(id: number): Observable<unknown> {
+    return this.http.delete(`${this.base}/api/alerts/${id}`);
+  }
+
+  /** The "run it now" button. Same path the scheduler takes. */
+  triggerAlert(code: string, asOf?: string, bu?: string): Observable<ReportOutcome> {
+    return this.http.post<ReportOutcome>(
+      `${this.base}/api/alerts/trigger/${code}`, null,
+      { params: this.params({ asOf, businessUnit: bu, force: 'true' }) });
+  }
+
+  // ---- reference data (drives the filter dropdowns) ----------------------
+  /** Business units are discovered from the loaded data, never hard-coded. */
+  health(): Observable<DataHealth> {
+    return this.http.get<DataHealth>(`${this.base}/api/health/data`);
+  }
+
+  /** The three personas the product serves, each with the metrics it owns. */
+  personaScopes(): Observable<PersonaScope[]> {
+    return this.http.get<PersonaScope[]>(`${this.base}/api/personas`);
+  }
+
+  /** Persona-scoped findings — what this persona should be looking at. */
+  insights(persona: string, from: string, to: string, bu?: string, limit = 5)
+      : Observable<PersonaBundle> {
+    return this.http.get<PersonaBundle>(`${this.base}/api/insights/${persona}`,
+      { params: this.params({ from, to, businessUnit: bu, limit }) });
   }
 
   // ---- metrics ----------------------------------------------------------
@@ -75,7 +126,8 @@ export class ApiService {
     return this.http.put<Record<string, unknown>>(
       `${this.base}/api/admin/personas/${code}/prompt`, { promptTemplate });
   }
-  alerts(): Observable<AlertDefinition[]> {
+  /** The alert DEFINITIONS (what can be run), not the delivered alerts. */
+  alertDefinitions(): Observable<AlertDefinition[]> {
     return this.http.get<AlertDefinition[]>(`${this.base}/api/admin/alerts`);
   }
   channels(): Observable<Record<string, boolean>> {

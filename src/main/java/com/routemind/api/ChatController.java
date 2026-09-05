@@ -1,6 +1,7 @@
 package com.routemind.api;
 
 import com.routemind.chat.QaChatbotService;
+import com.routemind.llm.LlmTrace;
 import com.routemind.chat.QaChatbotService.ChatAnswer;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
@@ -17,13 +18,26 @@ import java.util.Map;
  * checked against the prose.
  */
 @RestController
-@RequestMapping("/api/chat")
+@RequestMapping("/chat")
 @CrossOrigin
 public class ChatController {
 
     private final QaChatbotService chatbot;
+    private final LlmTrace trace;
 
-    public ChatController(QaChatbotService chatbot) { this.chatbot = chatbot; }
+    public ChatController(QaChatbotService chatbot, LlmTrace trace) {
+        this.chatbot = chatbot;
+        this.trace = trace;
+    }
+
+    /**
+     * Every model call the service has made recently, with why it was made, what it cost
+     * and whether it succeeded. The audit trail behind "the model never invents a number".
+     */
+    @GetMapping("/trace")
+    public Map<String, Object> llmTrace(@RequestParam(defaultValue = "50") int limit) {
+        return Map.of("summary", trace.summary(), "calls", trace.recent(limit));
+    }
 
     public record ChatRequest(String question, String businessUnit,
                               LocalDate from, LocalDate to) {}

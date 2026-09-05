@@ -66,6 +66,7 @@ public class AlertScheduler {
     private List<Map<String, Object>> due() {
         return jdbc.queryForList("""
                 SELECT s.id, s.cron_expression, s.timezone, s.frequency,
+                       s.next_run_at, s.last_run_at,
                        a.code AS alert_code
                 FROM alert_schedule s
                 JOIN alert_definition a ON a.id = s.alert_definition_id
@@ -80,10 +81,14 @@ public class AlertScheduler {
         String cron = String.valueOf(s.get("cron_expression"));
         ZoneId zone = zoneOf(String.valueOf(s.get("timezone")));
 
-        // First sighting of a schedule only arms it. Running immediately would fire a
-        // monthly report the moment someone saved the row, which is not what "monthly"
-        // means to the person who configured it.
-        if (s.get("next_run_at") == null && firstSighting(id)) {
+        // First sighting only ARMS the schedule. Running immediately would fire a monthly
+        // report the moment someone saved the row, which is not what "monthly" means to the
+        // person who configured it.
+        //
+        // The test is purely "has this schedule been given a next_run_at yet". It used to
+        // also consult last_run_at, which stays null while a schedule is merely armed — so
+        // an armed schedule re-armed itself on every tick and the report never ran at all.
+        if (s.get("next_run_at") == null) {
             arm(id, cron, zone, "armed");
             return;
         }
@@ -101,13 +106,6 @@ public class AlertScheduler {
         // Always re-arm, including after a failure. A schedule that stops rescheduling
         // itself when something goes wrong goes quiet permanently, and nobody notices.
         arm(id, cron, zone, status, note);
-    }
-
-    private boolean firstSighting(long scheduleId) {
-        Integer n = jdbc.queryForObject(
-                "SELECT count(*) FROM alert_schedule WHERE id = :id AND last_run_at IS NULL",
-                new MapSqlParameterSource("id", scheduleId), Integer.class);
-        return n != null && n > 0;
     }
 
     private void arm(long id, String cron, ZoneId zone, String status) {

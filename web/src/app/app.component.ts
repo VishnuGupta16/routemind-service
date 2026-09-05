@@ -12,6 +12,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
         <a routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
         <a routerLink="/why-ota" routerLinkActive="active">Why is OTA down?</a>
         <a routerLink="/signals" routerLinkActive="active">Operational signals</a>
+        <a routerLink="/alerts" routerLinkActive="active">Alerts</a>
         <a routerLink="/sla" routerLinkActive="active">SLA &amp; vendors</a>
         <a routerLink="/reports" routerLinkActive="active">Reports</a>
         <a routerLink="/admin" routerLinkActive="active">Admin</a>

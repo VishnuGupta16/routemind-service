@@ -29,6 +29,9 @@ public class SarvamNarrativeGenerator implements NarrativeGenerator {
 
     private static final String URL = "https://api.sarvam.ai/v1/chat/completions";
 
+    /** Headroom for a reasoning model's chain of thought (see LlmChat). */
+    private static final int REASONING_HEADROOM = 8000;
+
     private final RestClient http;
     private final String apiKey;
     private final String model;
@@ -57,7 +60,11 @@ public class SarvamNarrativeGenerator implements NarrativeGenerator {
             Map<String, Object> body = Map.of(
                     "model", model,
                     "temperature", 0.2,
-                    "max_tokens", 220,
+                    // sarvam-105b is a reasoning model — its chain of thought is billed
+                    // against max_tokens. 220 was consumed by the thinking alone, so the
+                    // reply came back content=null and every narrative silently fell back
+                    // to the template. Budget for the reasoning as well as the answer.
+                    "max_tokens", 220 + REASONING_HEADROOM,
                     "messages", List.of(
                             Map.of("role", "system", "content", SYSTEM),
                             Map.of("role", "user", "content", prompt(f, persona))));
@@ -86,6 +93,8 @@ public class SarvamNarrativeGenerator implements NarrativeGenerator {
         if (!(list.get(0) instanceof Map<?, ?> first)) return null;
         Object message = first.get("message");
         if (!(message instanceof Map<?, ?> m)) return null;
+        // ONLY content — never reasoning_content, which is the model's raw chain of
+        // thought and must not be shown to a user. Empty content falls back to the template.
         Object content = m.get("content");
         return content == null ? null : String.valueOf(content);
     }

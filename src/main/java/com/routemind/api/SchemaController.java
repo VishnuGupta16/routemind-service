@@ -15,7 +15,7 @@ import java.util.Map;
  * adopts or ignores each change, and adoption applies backward-compatible DDL.
  */
 @RestController
-@RequestMapping("/api/schema")
+@RequestMapping("/schema")
 @CrossOrigin
 public class SchemaController {
 

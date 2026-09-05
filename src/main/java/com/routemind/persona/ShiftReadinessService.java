@@ -38,7 +38,7 @@ public class ShiftReadinessService {
                            (delay_minutes > :window) AS late
                     FROM trips
                     WHERE trip_date = :day
-                      AND (:bu IS NULL OR business_unit = :bu)
+                      AND (CAST(:bu AS text) IS NULL OR business_unit = :bu)
                 ), e AS (
                     SELECT shift_type, office,
                            count(*)                                  AS expected,
@@ -46,7 +46,7 @@ public class ShiftReadinessService {
                            count(*) FILTER (WHERE is_no_show)        AS no_shows
                     FROM trip_employees
                     WHERE trip_date = :day
-                      AND (:bu IS NULL OR business_unit = :bu)
+                      AND (CAST(:bu AS text) IS NULL OR business_unit = :bu)
                     GROUP BY shift_type, office
                 )
                 SELECT t.shift_type, t.office,
@@ -106,9 +106,9 @@ public class ShiftReadinessService {
                        END AS minutes_late
                 FROM trip_employees e
                 WHERE e.trip_date = :day
-                  AND (:shift  IS NULL OR e.shift_type = :shift)
-                  AND (:office IS NULL OR e.office = :office)
-                  AND (:bu     IS NULL OR e.business_unit = :bu)
+                  AND (CAST(:shift AS text)  IS NULL OR e.shift_type = :shift)
+                  AND (CAST(:office AS text) IS NULL OR e.office = :office)
+                  AND (CAST(:bu AS text)     IS NULL OR e.business_unit = :bu)
                   AND (e.is_no_show
                        OR e.boarding_status <> 'Boarded'
                        OR e.actual_pickup IS NULL

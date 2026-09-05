@@ -1,6 +1,7 @@
 package com.routemind.chat;
 
 import org.junit.jupiter.api.DisplayName;
+import com.routemind.llm.LlmChat;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -16,7 +17,8 @@ class PersonaClassifierTest {
 
     /** A model client that is always unavailable, forcing the keyword path. */
     static PersonaClassifier offline() {
-        ChatModelClient noModel = new ChatModelClient(false, "", "", "");
+        LlmChat noModel = new LlmChat(false, "", "m", "http://localhost/none",
+                new com.routemind.llm.LlmTrace());
         return new PersonaClassifier(noModel);
     }
 

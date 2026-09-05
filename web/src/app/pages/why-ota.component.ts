@@ -2,8 +2,9 @@ import { Component, inject, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../core/api.service';
+import { FilterBarComponent } from '../core/filter-bar.component';
+import { FilterStateService } from '../core/filter-state.service';
 import { DualAnswer, Driver } from '../core/models';
-import { environment } from '../../environments/environment';
 
 /**
  * "Why is OTA down?" — the dual-track answer.
@@ -15,19 +16,12 @@ import { environment } from '../../environments/environment';
 @Component({
   selector: 'app-why-ota',
   standalone: true,
-  imports: [FormsModule, DecimalPipe],
+  imports: [FormsModule, DecimalPipe, FilterBarComponent],
   template: `
     <h1 class="page-title">Why is OTA down?</h1>
     <p class="page-sub">Answered two ways so you can see the AI is not inventing anything.</p>
 
-    <div class="controls">
-      <label>From <input type="date" [(ngModel)]="from" /></label>
-      <label>To <input type="date" [(ngModel)]="to" /></label>
-      <label>Business unit
-        <input [(ngModel)]="bu" placeholder="(all)" />
-      </label>
-      <button class="primary" (click)="run()">Diagnose</button>
-    </div>
+    <app-filter-bar (apply)="run()" />
 
     @if (error()) { <div class="card error">{{ error() }}</div> }
     @if (loading()) { <div class="card muted">Analysing…</div> }
@@ -111,9 +105,7 @@ import { environment } from '../../environments/environment';
 })
 export class WhyOtaComponent {
   private api = inject(ApiService);
-  from = '2026-06-01';
-  to = environment.demoAsOf;
-  bu = '';
+  protected fs = inject(FilterStateService);
   data = signal<DualAnswer | null>(null);
   loading = signal(false);
   error = signal('');
@@ -126,7 +118,14 @@ export class WhyOtaComponent {
     { key: 'byVendor' as const, label: 'Vendor' },
   ];
 
-  constructor() { this.from = '2026-06-01'; this.to = '2026-06-30'; this.run(); }
+  constructor() {
+    this.fs.loadOptions();
+    // Open on June: the month OTA actually fell (97.4% -> 95.4%), so the page lands on a
+    // real decomposition rather than on a period where nothing degraded.
+    this.fs.from.set('2026-06-01');
+    this.fs.to.set('2026-06-30');
+    this.run();
+  }
 
   rows(d: DualAnswer, key: (typeof this.dims)[number]['key']): Driver[] {
     return (d.facts[key] ?? []) as Driver[];
@@ -134,7 +133,7 @@ export class WhyOtaComponent {
 
   run(): void {
     this.loading.set(true); this.error.set('');
-    this.api.otaDual(this.from, this.to, this.bu || undefined).subscribe({
+    this.api.otaDual(this.fs.from(), this.fs.to(), this.fs.buParam()).subscribe({
       next: (d) => { this.data.set(d); this.loading.set(false); },
       error: (e) => {
         this.error.set(`Could not reach the service (${e?.status ?? '?'}). Is it running on :8080?`);

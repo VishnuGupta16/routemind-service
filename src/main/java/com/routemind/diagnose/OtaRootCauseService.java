@@ -127,7 +127,7 @@ public class OtaRootCauseService {
                            count(*) FILTER (WHERE t.delay_minutes > %2$s) AS late
                     FROM trips t
                     WHERE t.trip_date BETWEEN :from AND :to
-                      AND (:bu IS NULL OR t.business_unit = :bu)
+                      AND (CAST(:bu AS text) IS NULL OR t.business_unit = :bu)
                 """ + EXCLUDE_RENTAL + """
                     GROUP BY t.%1$s
                 ),
@@ -137,7 +137,7 @@ public class OtaRootCauseService {
                            count(*) FILTER (WHERE t.delay_minutes > %2$s) AS late
                     FROM trips t
                     WHERE t.trip_date BETWEEN :priorFrom AND :priorTo
-                      AND (:bu IS NULL OR t.business_unit = :bu)
+                      AND (CAST(:bu AS text) IS NULL OR t.business_unit = :bu)
                 """ + EXCLUDE_RENTAL + """
                     GROUP BY t.%1$s
                 ),
@@ -195,7 +195,7 @@ public class OtaRootCauseService {
                     SELECT t.delay_reason AS reason, count(*) AS c
                     FROM trips t
                     WHERE t.trip_date BETWEEN :from AND :to
-                      AND (:bu IS NULL OR t.business_unit = :bu)
+                      AND (CAST(:bu AS text) IS NULL OR t.business_unit = :bu)
                       AND t.delay_minutes > %1$s
                 """ + EXCLUDE_RENTAL + """
                     GROUP BY t.delay_reason
@@ -204,7 +204,7 @@ public class OtaRootCauseService {
                     SELECT t.delay_reason AS reason, count(*) AS c
                     FROM trips t
                     WHERE t.trip_date BETWEEN :priorFrom AND :priorTo
-                      AND (:bu IS NULL OR t.business_unit = :bu)
+                      AND (CAST(:bu AS text) IS NULL OR t.business_unit = :bu)
                       AND t.delay_minutes > %1$s
                 """ + EXCLUDE_RENTAL + """
                     GROUP BY t.delay_reason
@@ -313,7 +313,7 @@ public class OtaRootCauseService {
                                     / NULLIF(count(*),0))
                 FROM trips t
                 WHERE t.trip_date BETWEEN :from AND :to
-                  AND (:bu IS NULL OR t.business_unit = :bu)
+                  AND (CAST(:bu AS text) IS NULL OR t.business_unit = :bu)
                 """ + EXCLUDE_RENTAL).formatted(win),
                 new MapSqlParameterSource("from", from).addValue("to", to)
                         .addValue("bu", bu).addValue("window", window), Double.class);
@@ -324,7 +324,7 @@ public class OtaRootCauseService {
         Long v = jdbc.queryForObject(("""
                 SELECT count(*) FROM trips t
                 WHERE t.trip_date BETWEEN :from AND :to
-                  AND (:bu IS NULL OR t.business_unit = :bu)
+                  AND (CAST(:bu AS text) IS NULL OR t.business_unit = :bu)
                 """ + EXCLUDE_RENTAL),
                 new MapSqlParameterSource("from", from).addValue("to", to).addValue("bu", bu),
                 Long.class);

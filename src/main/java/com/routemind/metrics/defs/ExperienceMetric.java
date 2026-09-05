@@ -44,7 +44,7 @@ public class ExperienceMetric implements MetricDefinition {
                     JOIN trips t ON t.trip_id = f.trip_id
                     WHERE f.trip_at::date BETWEEN :from AND :to
                       AND coalesce(f.driver_rating, f.route_rating, 5) <= 2
-                      AND (:bu IS NULL OR f.business_unit = :bu)
+                      AND (CAST(:bu AS text) IS NULL OR f.business_unit = :bu)
                 )
                 SELECT vendor AS member, count(*) AS cnt,
                        100.0 * count(*) / NULLIF(sum(count(*)) OVER (), 0) AS pct

@@ -65,7 +65,7 @@ public class LiveRiskService {
                            coalesce(t.planned_employee_cnt, 0) AS emp
                     FROM trips t
                     WHERE t.trip_date = :day
-                      AND (:bu IS NULL OR t.business_unit = :bu)
+                      AND (CAST(:bu AS text) IS NULL OR t.business_unit = :bu)
                 )
                 SELECT u.trip_id, u.vendor, u.office, u.shift_type, u.planned_start, u.emp,
                        h.avg_delay, h.late_pct, h.n

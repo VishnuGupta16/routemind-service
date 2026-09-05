@@ -1,1 +1,7 @@
+plugins {
+    // Lets Gradle download the Java 24 toolchain itself, so the build does not
+    // depend on a JDK 24 already being installed on the machine.
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
 rootProject.name = 'routemind-service'

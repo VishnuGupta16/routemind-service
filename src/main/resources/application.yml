@@ -12,7 +12,11 @@ spring:
       enabled: true
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/routemind
+    # Port is overridable because 5432 is often already taken on a dev laptop by another
+    # Postgres; docker then publishes this container on a different host port (check with
+    # `docker port routemind-service-postgres-1`). Override without editing this file:
+    #   DB_PORT=5434 ./gradlew bootRun
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5434}/routemind
     username: routemind
     password: pass
     hikari:
@@ -26,7 +30,7 @@ spring:
 server:
   port: 8080
   servlet:
-    context-path: api
+    context-path: /api
 
 # Uncomment and fill in to send real email (then set routemind.notify.dry-run: false):
 # spring:
@@ -175,7 +179,10 @@ routemind:
     enabled: true
     base-url: https://api.sarvam.ai/v1
     model: sarvam-m
-    api-key: ${SARVAM_API_KEY:}
+    # Falls back to the narrative key so the chatbot and the narrative use one credential;
+    # SARVAM_API_KEY still overrides it. Without this the chatbot silently ran deterministic
+    # while /api/config reported the LLM as active.
+    api-key: ${SARVAM_API_KEY:${routemind.narrative.sarvam.api-key:}}
     # how far back the chatbot looks when a question names no period
     default-lookback-days: 30
     # the most recent date in the loaded demo data — "now" for the demo

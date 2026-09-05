@@ -24,7 +24,7 @@ import java.util.List;
  * inventing anything, and the AI track makes the rule-based track readable.
  */
 @RestController
-@RequestMapping("/api/diagnose")
+@RequestMapping("/diagnose")
 @CrossOrigin
 public class DiagnoseController {
 

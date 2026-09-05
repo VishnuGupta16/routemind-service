@@ -20,7 +20,7 @@ import java.util.Map;
  * against it. Scope fields left blank mean "any", so one row can cover the whole group.
  */
 @RestController
-@RequestMapping("/api/sla")
+@RequestMapping("/sla")
 @CrossOrigin
 public class SlaController {
 

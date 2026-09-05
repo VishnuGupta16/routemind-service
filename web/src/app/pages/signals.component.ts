@@ -2,6 +2,8 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../core/api.service';
+import { FilterBarComponent } from '../core/filter-bar.component';
+import { FilterStateService } from '../core/filter-state.service';
 import { Signal } from '../core/models';
 
 /**
@@ -16,7 +18,7 @@ import { Signal } from '../core/models';
 @Component({
   selector: 'app-signals',
   standalone: true,
-  imports: [FormsModule, DecimalPipe],
+  imports: [FormsModule, DecimalPipe, FilterBarComponent],
   template: `
     <h1 class="page-title">Operational signals</h1>
     <p class="page-sub">
@@ -24,16 +26,12 @@ import { Signal } from '../core/models';
       a fix (INCREMENTAL).
     </p>
 
-    <div class="controls">
-      <label>From <input type="date" [(ngModel)]="from" /></label>
-      <label>To <input type="date" [(ngModel)]="to" /></label>
-      <label>Business unit <input [(ngModel)]="bu" placeholder="(all)" /></label>
-      <label style="display:flex;align-items:center;gap:6px">
+    <app-filter-bar (apply)="load()">
+      <label class="inline-check">
         <input type="checkbox" [(ngModel)]="onlyDegrading" (change)="load()" />
         only degrading
       </label>
-      <button class="primary" (click)="load()">Scan</button>
-    </div>
+    </app-filter-bar>
 
     @if (error()) { <div class="card error">{{ error() }}</div> }
     @if (loading()) { <div class="card muted">Scanning…</div> }
@@ -93,9 +91,7 @@ import { Signal } from '../core/models';
 })
 export class SignalsComponent {
   private api = inject(ApiService);
-  from = '2026-03-01';
-  to = '2026-07-31';
-  bu = '';
+  protected fs = inject(FilterStateService);
   onlyDegrading = true;
   signals = signal<Signal[]>([]);
   loading = signal(false);
@@ -103,7 +99,7 @@ export class SignalsComponent {
 
   sorted = computed(() => [...this.signals()].sort((a, b) => b.urgency - a.urgency));
 
-  constructor() { this.load(); }
+  constructor() { this.fs.loadOptions(); this.load(); }
 
   format(s: Signal, v: number): string {
     switch (s.unit) {
@@ -117,8 +113,8 @@ export class SignalsComponent {
   load(): void {
     this.loading.set(true); this.error.set('');
     const call = this.onlyDegrading
-      ? this.api.degrading(this.from, this.to, this.bu || undefined)
-      : this.api.signals(this.from, this.to, this.bu || undefined);
+      ? this.api.degrading(this.fs.from(), this.fs.to(), this.fs.buParam())
+      : this.api.signals(this.fs.from(), this.fs.to(), this.fs.buParam());
     call.subscribe({
       next: (s) => { this.signals.set(s); this.loading.set(false); },
       error: (e) => {

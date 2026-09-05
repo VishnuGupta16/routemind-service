@@ -140,7 +140,7 @@ export class ReportsComponent {
   constructor() { this.loadAlerts(); this.loadHistory(); }
 
   loadAlerts(): void {
-    this.api.alerts().subscribe({
+    this.api.alertDefinitions().subscribe({
       next: (a) => this.alerts.set(a),
       error: (e) => this.error.set(`Could not load alerts (${e?.status ?? '?'}).`),
     });

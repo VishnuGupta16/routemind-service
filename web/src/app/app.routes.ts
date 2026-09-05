@@ -18,6 +18,10 @@ export const routes: Routes = [
       import('./pages/signals.component').then((m) => m.SignalsComponent),
   },
   {
+    path: 'alerts',
+    loadComponent: () => import('./pages/alerts.component').then((m) => m.AlertsComponent),
+  },
+  {
     path: 'sla',
     loadComponent: () => import('./pages/sla.component').then((m) => m.SlaComponent),
   },

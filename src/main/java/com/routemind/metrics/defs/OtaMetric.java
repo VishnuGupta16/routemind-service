@@ -33,7 +33,7 @@ public class OtaMetric implements MetricDefinition {
                        ) / NULLIF(count(*), 0) AS value
                 FROM trips t
                 WHERE t.trip_date BETWEEN :from AND :to
-                  AND (:bu IS NULL OR t.business_unit = :bu)
+                  AND (CAST(:bu AS text) IS NULL OR t.business_unit = :bu)
                   AND t.product_type NOT IN (:excludedProducts)
                 """;
         return Sql.point(jdbc, sql, q);
@@ -46,7 +46,7 @@ public class OtaMetric implements MetricDefinition {
                     SELECT t.vendor FROM trips t
                     WHERE t.trip_date BETWEEN :from AND :to
                       AND t.delay_minutes > """ + SlaPolicyService.windowForTrip("t") + """
-                      AND (:bu IS NULL OR t.business_unit = :bu)
+                      AND (CAST(:bu AS text) IS NULL OR t.business_unit = :bu)
                       AND t.product_type NOT IN (:excludedProducts)
                 )
                 SELECT vendor AS member, count(*) AS cnt,

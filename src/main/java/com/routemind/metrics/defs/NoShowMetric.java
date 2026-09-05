@@ -37,7 +37,7 @@ public class NoShowMetric implements MetricDefinition {
                     WHERE e.trip_date BETWEEN :from AND :to
                       AND e.is_no_show
                       AND e.product_type NOT IN (:excludedProducts)
-                      AND (:bu IS NULL OR e.business_unit = :bu)
+                      AND (CAST(:bu AS text) IS NULL OR e.business_unit = :bu)
                 )
                 SELECT vendor AS member, count(*) AS cnt,
                        100.0 * count(*) / NULLIF(sum(count(*)) OVER (), 0) AS pct

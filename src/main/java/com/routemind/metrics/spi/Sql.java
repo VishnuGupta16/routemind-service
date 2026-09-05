@@ -14,7 +14,7 @@ public final class Sql {
     private Sql() {}
 
     /** Standard tenant filter — every table carries business_unit. */
-    public static final String BU = " AND (:bu IS NULL OR business_unit = :bu) ";
+    public static final String BU = " AND (CAST(:bu AS text) IS NULL OR business_unit = :bu) ";
 
     /**
      * Excludes service lines that can't be measured on the same basis (SPOT_2.0).

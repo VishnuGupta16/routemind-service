@@ -88,7 +88,10 @@ public class OtaDiagnosisService {
     }
 
     private Track aiTrack(Diagnosis d) {
-        Optional<String> narrative = llm.ask(SYSTEM, factSheet(d), 260);
+        // 260 was the ANSWER length, and a multi-dimension decomposition is a long fact
+        // sheet to reason over — the reply came back finish_reason=length with no content,
+        // which is why the AI track silently mirrored the rule-based one.
+        Optional<String> narrative = llm.ask(SYSTEM, factSheet(d), 600, "ota-narrative");
         if (narrative.isPresent()) {
             return new Track("LLM", narrative.get(), false,
                     "Written by the model over the rule-based numbers only. Compare it "

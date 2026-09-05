@@ -16,14 +16,23 @@
             "index": "src/index.html",
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
+            "polyfills": [
+              "zone.js"
+            ],
             "assets": [],
-            "styles": ["src/styles.css"],
+            "styles": [
+              "src/styles.css"
+            ],
             "scripts": []
           },
           "configurations": {
             "production": {
               "budgets": [
-                { "type": "initial", "maximumWarning": "1mb", "maximumError": "2mb" }
+                {
+                  "type": "initial",
+                  "maximumWarning": "1mb",
+                  "maximumError": "2mb"
+                }
               ],
               "outputHashing": "all"
             },
@@ -37,8 +46,12 @@
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
-            "production": { "buildTarget": "routemind-web:build:production" },
-            "development": { "buildTarget": "routemind-web:build:development" }
+            "production": {
+              "buildTarget": "routemind-web:build:production"
+            },
+            "development": {
+              "buildTarget": "routemind-web:build:development"
+            }
           },
           "defaultConfiguration": "development"
         }

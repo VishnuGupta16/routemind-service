@@ -292,3 +292,63 @@ export interface ChatAnswer {
   structured: ChatSection[];
   facts: ChatFact[];
 }
+
+/** /api/health/data — also the source of the business-unit list for filters. */
+export interface DataHealth {
+  status: string;
+  dateRange: [string, string];
+  tables: { table: string; rows: number }[];
+  businessUnits: string[];
+}
+
+/** /api/personas — the three personas the product serves, with the metrics each owns. */
+export interface PersonaScope {
+  id: string;
+  displayName: string;
+  need: string;
+  cadence: string;
+  channel: string;
+  metrics: string[];
+}
+
+/** /api/insights/{persona} — the persona-scoped bundle. */
+export interface PersonaBundle {
+  persona: string;
+  displayName?: string;
+  from: string;
+  to: string;
+  businessUnit: string | null;
+  findings: Finding[];
+}
+
+export interface Finding {
+  metricId: string;
+  displayName: string;
+  value: number;
+  target: number | null;
+  priorValue: number | null;
+  status: string;
+  reason: string | null;
+  evidence: string | null;
+  narrative: string | null;
+  attributionDimension: string | null;
+  attribution: { member: string; count: number; pct: number }[] | null;
+}
+
+/** /api/alerts — one delivered alert sitting in the in-app inbox. */
+export interface InAppAlert {
+  id: number;
+  report_id: number | null;
+  persona_code: string;
+  business_unit: string | null;
+  title: string;
+  body: string | null;
+  severity: 'CRITICAL' | 'WARNING' | 'INFO';
+  read_at: string | null;
+  created_at: string;
+}
+
+export interface AlertSummary {
+  unread: number;
+  bySeverity: { severity: string; n: number }[];
+}

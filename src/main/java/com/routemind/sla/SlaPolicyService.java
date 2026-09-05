@@ -66,10 +66,16 @@ public class SlaPolicyService {
             rs.getString("business_unit"), rs.getString("vendor"),
             rs.getString("product_type"), rs.getString("shift_type"),
             rs.getInt("ota_window_minutes"), rs.getDouble("ota_target"),
-            (Double) rs.getObject("tolerance_pct"),
-            (Double) rs.getObject("no_show_target"), rs.getInt("priority"),
+            dbl(rs, "tolerance_pct"),
+            dbl(rs, "no_show_target"), rs.getInt("priority"),
             date(rs, "effective_from"), date(rs, "effective_to"),
             rs.getBoolean("active"), rs.getString("notes"), rs.getString("created_by"));
+
+    /** numeric columns arrive as BigDecimal, so read them as such and keep SQL NULL as null. */
+    private static Double dbl(ResultSet rs, String c) throws SQLException {
+        java.math.BigDecimal v = rs.getBigDecimal(c);
+        return v == null ? null : v.doubleValue();
+    }
 
     private static LocalDate date(ResultSet rs, String c) throws SQLException {
         java.sql.Date d = rs.getDate(c);

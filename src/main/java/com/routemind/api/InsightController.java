@@ -49,14 +49,6 @@ public class InsightController {
         this.rules = rules;
     }
 
-    // ---------------------------------------------------------------- metrics
-    @GetMapping("/metrics")
-    public List<MetricWithContext> all(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-                                       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
-                                       @RequestParam(required = false) String businessUnit) {
-        return metrics.all(from, to, businessUnit);
-    }
-
     // ------------------------------------------------------ personas (all 3)
     @GetMapping("/personas")
     public List<Map<String, Object>> personas() {

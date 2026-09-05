@@ -42,7 +42,7 @@ public class WorstProductOtaMetric implements MetricDefinition {
                            ) / NULLIF(count(*), 0) AS ota
                     FROM trips t
                     WHERE t.trip_date BETWEEN :from AND :to
-                      AND (:bu IS NULL OR t.business_unit = :bu)
+                      AND (CAST(:bu AS text) IS NULL OR t.business_unit = :bu)
                       AND t.product_type NOT IN (:excludedProducts)
                     GROUP BY t.product_type
                     HAVING count(*) >= """ + MIN_TRIPS + """
@@ -64,7 +64,7 @@ public class WorstProductOtaMetric implements MetricDefinition {
                            count(*) AS trips
                     FROM trips t
                     WHERE t.trip_date BETWEEN :from AND :to
-                      AND (:bu IS NULL OR t.business_unit = :bu)
+                      AND (CAST(:bu AS text) IS NULL OR t.business_unit = :bu)
                       AND t.product_type NOT IN (:excludedProducts)
                     GROUP BY t.product_type
                     HAVING count(*) >= """ + MIN_TRIPS + """

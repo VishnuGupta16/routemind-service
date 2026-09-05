@@ -4,10 +4,36 @@
 **Agentic Intelligence & Reporting Layer**. Senses → reasons → acts, over the normalised
 Postgres dataset, for **all three personas**.
 
+📊 **[Demo deck](https://claude.ai/code/artifact/7a18bfaf-7baa-4c62-87ff-8a9d2a63b52a)** —
+how degrading metrics are detected, how OTA is decomposed into root causes, what the LLM
+is allowed to do, and the architecture.
+
+📐 **[Architecture](docs/architecture.md)** · 🧪 **[Chatbot evaluation](docs/chatbot-evaluation.md)**
+
+### The chatbot answers only from this data
+
+The model chooses *which* analysis to run; it never produces the numbers.
+
+1. **An existing service, always first** — seven tools, each already applying the SLA
+   policy, product exclusions and attribution rules.
+2. **Bounded SQL only if none fits** — read-only, allow-listed tables, period and business
+   unit injected as bound parameters so the model cannot widen its own slice.
+3. **At most two attempts**, then answer from what the services returned.
+
+No internet, no general knowledge, no industry averages. If the data does not cover the
+question the answer is *"Still working on it — our data doesn't cover that yet."*
+Every model call is traced at `GET /api/chat/trace`.
+
+### Alerts land in the app
+
+`IN_APP` is the default channel, so the whole sense → reason → notify loop runs with no
+mail server. `POST /api/alerts/trigger/{code}` is the UI button and takes the same path as
+the 07:00 cron.
+
 ## Run
 
 ```bash
-psql "postgresql://routemind:pass@localhost:5432/routemind" -f verify.sql   # check the load
+psql "postgresql://routemind:pass@localhost:5434/routemind" -f verify.sql   # check the load
 ./gradlew bootRun
 open http://localhost:8080/                                                 # dashboard
 ```
@@ -196,3 +222,16 @@ persona routing do not change** — only the `basis` field and the accuracy do.
 3. Requires **JDK 24** and the Postgres load from `../etl`.
 4. LLM narrative is **off by default**. Turn it on with
    `routemind.narrative.sarvam.enabled=true` and an `api-key`.
+
+## Endpoints added for question-shaped answers
+
+The metric board answers "how are we doing". These answer the questions it could not.
+
+| Endpoint | Question |
+|---|---|
+| `GET /api/slice/ota?shiftBand=NIGHT` | "How is OTA on the night shift?" — one metric restricted to a slice the question named. At least one filter is required; without one, use `/api/metrics/ota`. |
+| `GET /api/slice/repeat-offenders` | "Who is *consistently* bad?" — vendors below target in a third or more of the weeks measured. The prior-period comparison only ever sees one window against one, so it cannot see a vendor that has simply always been bad. |
+| `GET /api/slice/penalties` | "Which vendor carries the most penalties?" — penalties live on `billing`, dated by **billing cycle** rather than trip date, so a trip-date filter finds almost nothing. |
+| `GET /api/alerts` · `/summary` | The in-app alert inbox and its unread badge. |
+| `POST /api/alerts/trigger/{code}` | Run an alert now and deliver it to the inbox. |
+| `GET /api/chat/trace` | Every LLM call: purpose, latency, tokens, outcome. |

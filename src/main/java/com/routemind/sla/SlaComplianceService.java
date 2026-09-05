@@ -75,7 +75,7 @@ public class SlaComplianceService {
                         LIMIT 1
                     ) p ON TRUE
                     WHERE t.trip_date BETWEEN :from AND :to
-                      AND (:bu IS NULL OR t.business_unit = :bu)
+                      AND (CAST(:bu AS text) IS NULL OR t.business_unit = :bu)
                 )
                 SELECT vendor, business_unit, %s,
                        count(*) AS trips,

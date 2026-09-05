@@ -29,8 +29,14 @@ public class VendorFleetService {
             rs.getString("product_type"), rs.getString("shift_type"),
             rs.getLong("trips"), rs.getInt("vehicles"),
             date(rs, "first_seen"), date(rs, "last_seen"),
-            (Double) rs.getObject("observed_ota"), (Double) rs.getObject("avg_delay_min"),
+            dbl(rs, "observed_ota"), dbl(rs, "avg_delay_min"),
             null, null);
+
+    /** numeric columns arrive as BigDecimal, so read them as such and keep SQL NULL as null. */
+    private static Double dbl(ResultSet rs, String c) throws SQLException {
+        java.math.BigDecimal v = rs.getBigDecimal(c);
+        return v == null ? null : v.doubleValue();
+    }
 
     private static LocalDate date(ResultSet rs, String c) throws SQLException {
         java.sql.Date d = rs.getDate(c);
@@ -63,8 +69,8 @@ public class VendorFleetService {
     public List<VendorFleet> all(String vendor, String businessUnit, LocalDate on) {
         String sql = """
                 SELECT * FROM vendor_fleet
-                WHERE (:vendor IS NULL OR vendor = :vendor)
-                  AND (:bu IS NULL OR business_unit = :bu)
+                WHERE (CAST(:vendor AS text) IS NULL OR vendor = :vendor)
+                  AND (CAST(:bu AS text) IS NULL OR business_unit = :bu)
                 ORDER BY vendor, product_type, shift_type
                 """;
         MapSqlParameterSource p = new MapSqlParameterSource()

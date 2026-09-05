@@ -111,8 +111,8 @@ public class ReportRepository {
                 FROM generated_report r
                 JOIN persona p ON p.id = r.persona_id
                 LEFT JOIN alert_definition a ON a.id = r.alert_definition_id
-                WHERE (:persona IS NULL OR p.code = :persona)
-                  AND (:bu IS NULL OR r.business_unit = :bu)
+                WHERE (CAST(:persona AS text) IS NULL OR p.code = :persona)
+                  AND (CAST(:bu AS text) IS NULL OR r.business_unit = :bu)
                 ORDER BY r.created_at DESC
                 LIMIT :limit
                 """, new MapSqlParameterSource("persona", personaCode)

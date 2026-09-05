@@ -26,7 +26,7 @@ class SchemaAdvisorTest {
 
     /** enabled=false and no key, so ask() short-circuits — nothing leaves the JVM. */
     static final SchemaAdvisor OFFLINE =
-            new SchemaAdvisor(new LlmChat(false, "", "m", "http://localhost/none"));
+            new SchemaAdvisor(new LlmChat(false, "", "m", "http://localhost/none", new com.routemind.llm.LlmTrace()));
 
     static Profile p(String type, double fill, long distinct, String... samples) {
         return new Profile(type, fill, distinct, List.of(samples));

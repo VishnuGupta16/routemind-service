@@ -34,7 +34,7 @@ class SchemaRegistryTest {
 
     /** No key configured -> available() is false -> the deterministic heuristic is used. */
     static SchemaAdvisor offlineAdvisor() {
-        return new SchemaAdvisor(new LlmChat(false, "", "m", "http://localhost/none"));
+        return new SchemaAdvisor(new LlmChat(false, "", "m", "http://localhost/none", new com.routemind.llm.LlmTrace()));
     }
 
     static Profile profile(String type, double fill, long distinct, String... samples) {

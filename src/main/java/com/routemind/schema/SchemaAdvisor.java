@@ -37,7 +37,7 @@ public class SchemaAdvisor {
 
     /** Returns the proposal text shown to the human in the UI. */
     public String propose(String source, String column, Profile p) {
-        return llm.ask(SYSTEM, prompt(source, column, p), 220)
+        return llm.ask(SYSTEM, prompt(source, column, p), 220, "schema-advice")
                 .map(s -> s + "\n\n(assessed by model; a human decides)")
                 .orElseGet(() -> heuristic(source, column, p));
     }

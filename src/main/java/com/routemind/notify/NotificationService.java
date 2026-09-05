@@ -90,7 +90,7 @@ public class NotificationService {
                 WHERE a.code = :alertCode
                   AND sub.active AND r.active AND ch.active AND a.active
                   AND (COALESCE(sub.business_unit, r.business_unit) IS NULL
-                       OR :bu IS NULL
+                       OR CAST(:bu AS text) IS NULL
                        OR COALESCE(sub.business_unit, r.business_unit) = :bu)
                 ORDER BY r.email
                 """, new MapSqlParameterSource("alertCode", alertCode).addValue("bu", businessUnit));

@@ -76,3 +76,13 @@ th { color: var(--muted); font-weight: 600; }
 .error { color: var(--bad); }
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 @media (max-width: 820px) { .two-col { grid-template-columns: 1fr; } .sidebar { display: none; } }
+
+/* Filter-bar extras: a checkbox sits beside the dropdowns, not stacked like a field. */
+.controls select {
+  padding: 6px 8px; font-size: 13px; border-radius: 6px;
+  border: 1px solid var(--border, #d0d5dd); background: var(--card, #fff);
+  color: inherit; min-width: 170px;
+}
+.controls .inline-check {
+  flex-direction: row; align-items: center; gap: 6px; padding-bottom: 6px;
+}

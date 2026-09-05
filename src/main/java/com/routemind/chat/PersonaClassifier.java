@@ -1,5 +1,6 @@
 package com.routemind.chat;
 
+import com.routemind.llm.LlmChat;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -25,9 +26,9 @@ public class PersonaClassifier {
 
     public record Result(String personaCode, String source, String rationale) {}
 
-    private final ChatModelClient model;
+    private final LlmChat model;
 
-    public PersonaClassifier(ChatModelClient model) { this.model = model; }
+    public PersonaClassifier(LlmChat model) { this.model = model; }
 
     private static final String SYSTEM = """
             Classify who is asking a question about an employee-transport operation into ONE
@@ -43,6 +44,19 @@ public class PersonaClassifier {
             Question: %s
             """;
 
+    /**
+     * DECISIVE cues — phrases that identify a persona on their own and outrank any number
+     * of generic matches. Without these, "which vendors missed the SLA they signed" scored
+     * higher on the transport list (it contains "which vendor" and "breach") than on the
+     * facilities list, and a contract question was answered as an operational one.
+     */
+    private static final List<String> FACILITIES_STRONG = List.of(
+            "sla they signed", "contract they signed", "penalty exposure", "renegotiat",
+            "missed the sla", "budget", "invoice", "cost per trip", "our spend");
+    private static final List<String> LINE_STRONG = List.of(
+            "my team", "my people", "our team", "my shift", "my riders",
+            "did everyone", "who was late", "did not show up", "on my floor");
+
     /** Keyword cues, scored. Deliberately small and readable — it is a floor, not the brain. */
     private static final List<String> FACILITIES = List.of(
             "budget", "cost", "spend", "contract", "renegotiat", "penalt",
@@ -57,7 +71,14 @@ public class PersonaClassifier {
                     "our pickups", "my riders", "did everyone");
 
     public Result classify(String question) {
-        return model.ask(SYSTEM.formatted(question))
+        // No model wired at all => straight to the deterministic floor.
+        if (model == null) return keyword(question);
+        // One shared client: same credential, same reasoning-token headroom, and every
+        // call lands in the trace. The langchain4j client this used to hold read a
+        // different property, was never configured, and so silently classified by keyword
+        // while reporting the model as active.
+        return model.ask("You classify questions. Reply with one code and nothing else.",
+                SYSTEM.formatted(question), 40, "persona-classify")
                 .map(String::trim)
                 .map(PersonaClassifier::normalise)
                 .filter(PersonaClassifier::isPersona)
@@ -80,6 +101,16 @@ public class PersonaClassifier {
 
     private Result keyword(String question) {
         String q = question.toLowerCase(Locale.ROOT);
+
+        // A decisive phrase settles it before any scoring. Checked line-manager first: a
+        // question about "my team" is team-level even when it also mentions cost or lateness.
+        if (LINE_STRONG.stream().anyMatch(q::contains)) {
+            return new Result("LINE_MANAGER", "keyword", "names their own team or shift");
+        }
+        if (FACILITIES_STRONG.stream().anyMatch(q::contains)) {
+            return new Result("FACILITIES_HEAD", "keyword", "contract, penalty or budget language");
+        }
+
         int f = score(q, FACILITIES), t = score(q, TRANSPORT), l = score(q, LINE);
 
         // Default to the transport manager: "why is X down / bad" is the commonest question
