@@ -85,11 +85,25 @@ public class MetricService {
                 def.attributionDimension(), contributors, projection, headline);
     }
 
+    /**
+     * Ceiling on the at-risk band, as a percentage of the target. Keeps the configured
+     * absolute margin meaningful across metrics measured in points, rupees and ratings.
+     */
+    private static final double AT_RISK_MAX_PCT_OF_TARGET = 5.0;
+
     private Status status(double value, double target, Double vsPrior, boolean higherBetter) {
         boolean breach = higherBetter ? value < target : value > target;
         if (breach) return Status.BREACH;
         double distance = higherBetter ? value - target : target - value;
-        if (distance <= rules.getSla().getAtRiskMargin()) return Status.AT_RISK;
+
+        // The at-risk margin is an absolute number of units, which only makes sense near
+        // the scale it was chosen for: 2.0 points is a sensible warning band around a 95%
+        // OTA target (2% of it) and a nonsensical one around a 9% EV floor (22% of it),
+        // where it marked a metric sitting 21% clear of target as AT_RISK. Cap it at a
+        // proportion of the target so one setting behaves the same way on every scale.
+        double margin = Math.min(rules.getSla().getAtRiskMargin(),
+                Math.abs(target) * (AT_RISK_MAX_PCT_OF_TARGET / 100.0));
+        if (distance <= margin) return Status.AT_RISK;
         double drop = rules.getTrigger().getTrendDropUnits();
         if (vsPrior != null && (higherBetter ? vsPrior <= -drop : vsPrior >= drop)) {
             return Status.AT_RISK;
