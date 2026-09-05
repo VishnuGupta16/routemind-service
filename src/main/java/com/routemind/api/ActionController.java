@@ -18,7 +18,7 @@ import java.util.Map;
  * The "act" loop: propose → human approves/rejects → executed, with an audit trail.
  */
 @RestController
-@RequestMapping("/api/actions")
+@RequestMapping("/actions")
 @CrossOrigin
 public class ActionController {
 

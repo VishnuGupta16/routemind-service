@@ -1,0 +1,8 @@
+{
+  "//": "Dev proxy so the Angular dev server (4200) reaches the Java service (8080) with no CORS fuss. In production, serve the built app behind the same origin as the API.",
+  "/api": {
+    "target": "http://localhost:8080",
+    "secure": false,
+    "changeOrigin": true
+  }
+}

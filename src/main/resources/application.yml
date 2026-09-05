@@ -25,6 +25,17 @@ spring:
 
 server:
   port: 8080
+  servlet:
+    context-path: api
+
+# Uncomment and fill in to send real email (then set routemind.notify.dry-run: false):
+# spring:
+#   mail:
+#     host: smtp.example.com
+#     port: 587
+#     username: ${MAIL_USER}
+#     password: ${MAIL_PASSWORD}
+#     properties.mail.smtp.starttls.enable: true
 
 # Uncomment and fill in to send real email (then set routemind.notify.dry-run: false):
 # spring:
@@ -153,8 +164,8 @@ routemind:
 
   narrative:
     sarvam:
-      enabled: false            # true + api-key => LLM narrative, else deterministic
-      api-key: ""
+      enabled: true            # true + api-key => LLM narrative, else deterministic
+      api-key: sk_udm3yjvc_qaQXbXbv04zGcv1BKcz1csUn
       model: sarvam-105b
 
   # QA chatbot (langchain4j -> Sarvam). The key is read from the environment, never

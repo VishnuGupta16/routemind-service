@@ -20,7 +20,7 @@ import java.util.function.Consumer;
 
 /** Predictive + live layer: what is going to fail, before it does. */
 @RestController
-@RequestMapping("/api/live")
+@RequestMapping("/live")
 @CrossOrigin
 public class LiveController {
 

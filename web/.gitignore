@@ -1,0 +1,36 @@
+# See https://angular.dev/tools/cli/setup-local#configure-git for git config guidance
+# specific to Angular.
+
+# Compiled output
+/dist
+/tmp
+/out-tsc
+/bazel-out
+
+# Node
+/node_modules
+npm-debug.log
+yarn-error.log
+
+# Angular / IDE
+.angular/cache
+.angular/
+.sass-cache/
+/connect.lock
+/coverage
+/libpeerconnection.log
+testem.log
+/typings
+
+.idea/
+.vscode/
+*.sublime-workspace
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Env — proxy.conf.json already carries no secrets (points at localhost:8080), but
+# guard against a local override anyway.
+.env
+.env.*
