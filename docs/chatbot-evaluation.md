@@ -31,6 +31,18 @@ actionable (party + next step)     : 5/5
 evidence with references           : 5/5
 ```
 
+## Answer source
+
+Four of five answers are now written by the model; the fifth falls back to the template
+cleanly. `answerSource` on every response says which, so a demo never has to guess.
+
+The LLM writes **only the one-line direct answer**. An earlier design handed it the whole
+analysis to re-emit and it reasoned past 8,700 tokens without finishing — so every answer
+fell back to the template, slowly, and what it did produce was padded with hypotheticals
+("if the morning band were 88.0%…") and arithmetic of its own. Narrowing the job to one
+sentence costs ~80 tokens and completes in under a second, and the deterministic sections
+keep their computed references untouched.
+
 ## What the evaluation caught
 
 The first run scored **3/5 persona, 4/5 actionable, 3/5 evidence**. Four defects, all fixed:
@@ -49,6 +61,21 @@ The first run scored **3/5 persona, 4/5 actionable, 3/5 evidence**. Four defects
 
 4. **Selected tools returned no data.** `SHIFT_READINESS` and `METRIC_WITH_CONTEXT` were
    chosen but never executed — 0 facts returned. Both now call their service.
+
+5. **Filters in the question were ignored.** "How is OTA on the night shift?" returned the
+   all-trips figure (97.1% over 205,160) instead of the night-shift one (99.4% over
+   27,023) — a wrong answer with correct arithmetic behind it. Filters are now extracted
+   deterministically and applied by `SlicedMetricService`.
+
+6. **Penalties reported as 0.0%.** Penalty lines live on `billing`, dated by *billing
+   cycle*, not trip date — so a trip-date filter found 20 rows. The real answer: one vendor
+   carries ₹14.66M, 94.6% of every penalty raised.
+
+7. **Healthy metrics alerted as degrading.** "EV share sliding to 10.9% (target 9.0%) — a
+   trend to get ahead of before it breaches" fired while the metric sat 21% clear of its
+   floor. Two causes: the alert gate looked only at trend shape, never at proximity to
+   target; and the at-risk margin was a flat 2.0 units, which is 2% of an OTA target and
+   22% of an EV floor. Both fixed, both pinned by tests.
 
 ## Running it
 
