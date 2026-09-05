@@ -3,13 +3,18 @@ package com.routemind.sla;
 import java.time.LocalDate;
 
 /**
- * One vendor × cab type × shift band combination that is actually operating.
+ * One vendor × cab type × shift time that is actually operating.
  *
- * This is what an SLA gets configured against. Without it the onboarding screen is a set of
- * free-text boxes, and nothing stops someone committing a vendor to 97% on a cab type they
- * have never run — a target that can never be measured, on a scorecard that quietly reads
- * "no data" forever. Picking from real combinations, with the observed rate visible while
- * you choose the target, makes the commitment informed rather than invented.
+ * This is the vendor list an SLA gets configured against. Without it the onboarding screen
+ * is a set of free-text boxes, and nothing stops someone committing a vendor to 97% on a cab
+ * type or a shift they have never run — a target that could never be measured, on a
+ * scorecard that would quietly read "no data" forever. Picking from real combinations, with
+ * the observed rate visible while you choose the target, makes the commitment informed
+ * rather than invented.
+ *
+ * Scoped by EXACT shift time, matching how {@link SlaPolicy} resolves. {@code shift_band}
+ * exists on the trip data for reporting, but a contract commits to a clock time, not to a
+ * bucket we invented, so it plays no part here.
  *
  * Derived from the trip data, never entered by hand.
  */
@@ -18,14 +23,14 @@ public record VendorFleet(
         String businessUnit,
         String vendor,
         String productType,
-        String shiftBand,
+        String shiftType,
         long trips,
         int vehicles,
         LocalDate firstSeen,
         LocalDate lastSeen,
         Double observedOta,      // at the default 10-minute window, for reference
         Double avgDelayMinutes,
-        // filled in by the service, not by the table
+        // filled in by the service, not stored on the table
         SlaPolicy appliedSla,
         SlaPolicy.Verdict verdict) {
 
@@ -39,13 +44,13 @@ public record VendorFleet(
     public boolean judgeable() { return trips >= MIN_TRIPS_TO_JUDGE; }
 
     public String label() {
-        return vendor + " · " + productType + " · " + shiftBand.toLowerCase();
+        return vendor + " · " + productType + " · " + shiftType;
     }
 
     public VendorFleet withSla(SlaPolicy sla) {
         SlaPolicy.Verdict v = (sla == null || observedOta == null || !judgeable())
                 ? null : sla.verdict(observedOta);
-        return new VendorFleet(id, businessUnit, vendor, productType, shiftBand, trips,
+        return new VendorFleet(id, businessUnit, vendor, productType, shiftType, trips,
                 vehicles, firstSeen, lastSeen, observedOta, avgDelayMinutes, sla, v);
     }
 }

@@ -24,24 +24,22 @@ public class SlaPolicyService {
               AND (s.vendor       IS NULL OR s.vendor       = %1$s.vendor)
               AND (s.product_type IS NULL OR s.product_type = %1$s.product_type)
               AND (s.shift_type   IS NULL OR s.shift_type   = %1$s.shift_type)
-              AND (s.shift_band   IS NULL OR s.shift_band   = %1$s.shift_band)
               AND s.active
               AND (s.effective_from IS NULL OR s.effective_from <= %1$s.trip_date)
               AND (s.effective_to   IS NULL OR s.effective_to   >= %1$s.trip_date)
             """;
 
     /**
-     * Most specific first: vendor 16 &gt; business unit 8 &gt; product 4 &gt; exact shift 2
-     * &gt; shift band 1. Kept identical to {@link SlaPolicy#specificity()} — if these two
-     * ever disagree, the UI shows one contract and the metrics score against another.
-     * {@code SlaPolicyTest} pins them together.
+     * Most specific first: vendor 8 &gt; business unit 4 &gt; product 2 &gt; shift type 1.
+     * Kept identical to {@link SlaPolicy#specificity()} — if these two ever disagree, the
+     * UI shows one contract and the metrics score against another. {@code SlaPolicyTest}
+     * pins them together.
      */
     public static final String SPECIFICITY_ORDER = """
-              ORDER BY ( (s.vendor IS NOT NULL)::int * 16
-                       + (s.business_unit IS NOT NULL)::int * 8
-                       + (s.product_type IS NOT NULL)::int * 4
-                       + (s.shift_type IS NOT NULL)::int * 2
-                       + (s.shift_band IS NOT NULL)::int * 1 ) DESC,
+              ORDER BY ( (s.vendor IS NOT NULL)::int * 8
+                       + (s.business_unit IS NOT NULL)::int * 4
+                       + (s.product_type IS NOT NULL)::int * 2
+                       + (s.shift_type IS NOT NULL)::int * 1 ) DESC,
                        s.priority DESC,
                        s.effective_from DESC NULLS LAST
             """;
@@ -67,7 +65,6 @@ public class SlaPolicyService {
             rs.getLong("id"), rs.getString("name"),
             rs.getString("business_unit"), rs.getString("vendor"),
             rs.getString("product_type"), rs.getString("shift_type"),
-            rs.getString("shift_band"),
             rs.getInt("ota_window_minutes"), rs.getDouble("ota_target"),
             (Double) rs.getObject("tolerance_pct"),
             (Double) rs.getObject("no_show_target"), rs.getInt("priority"),
@@ -90,14 +87,13 @@ public class SlaPolicyService {
 
     /** Which SLA actually applies to this combination on this date. */
     public Optional<SlaPolicy> resolve(String businessUnit, String vendor, String productType,
-                                       String shiftType, String shiftBand, LocalDate on) {
+                                       String shiftType, LocalDate on) {
         String sql = """
                 SELECT * FROM sla_policy s
                 WHERE (s.business_unit IS NULL OR s.business_unit = :bu)
                   AND (s.vendor        IS NULL OR s.vendor        = :vendor)
                   AND (s.product_type  IS NULL OR s.product_type  = :product)
                   AND (s.shift_type    IS NULL OR s.shift_type    = :shift)
-                  AND (s.shift_band    IS NULL OR s.shift_band    = :band)
                   AND s.active
                   AND (s.effective_from IS NULL OR s.effective_from <= :on)
                   AND (s.effective_to   IS NULL OR s.effective_to   >= :on)
@@ -106,7 +102,6 @@ public class SlaPolicyService {
         MapSqlParameterSource p = new MapSqlParameterSource()
                 .addValue("bu", businessUnit).addValue("vendor", vendor)
                 .addValue("product", productType).addValue("shift", shiftType)
-                .addValue("band", shiftBand)
                 .addValue("on", on == null ? LocalDate.now() : on);
         return jdbc.query(sql, p, MAPPER).stream().findFirst();
     }
@@ -114,10 +109,10 @@ public class SlaPolicyService {
     public SlaPolicy create(SlaPolicy p) {
         String sql = """
                 INSERT INTO sla_policy (name, business_unit, vendor, product_type, shift_type,
-                                        shift_band, ota_window_minutes, ota_target,
-                                        tolerance_pct, no_show_target, priority,
-                                        effective_from, effective_to, active, notes, created_by)
-                VALUES (:name, :bu, :vendor, :product, :shift, :band, :window, :target,
+                                        ota_window_minutes, ota_target, tolerance_pct,
+                                        no_show_target, priority, effective_from,
+                                        effective_to, active, notes, created_by)
+                VALUES (:name, :bu, :vendor, :product, :shift, :window, :target,
                         :tolerance, :noShow, :priority, :from, :to, :active, :notes, :by)
                 RETURNING *
                 """;
@@ -127,8 +122,7 @@ public class SlaPolicyService {
     public Optional<SlaPolicy> update(long id, SlaPolicy p) {
         String sql = """
                 UPDATE sla_policy SET name=:name, business_unit=:bu, vendor=:vendor,
-                    product_type=:product, shift_type=:shift, shift_band=:band,
-                    ota_window_minutes=:window, ota_target=:target, tolerance_pct=:tolerance,
+                    product_type=:product, shift_type=:shift, ota_window_minutes=:window, ota_target=:target, tolerance_pct=:tolerance,
                     no_show_target=:noShow, priority=:priority,
                     effective_from=:from, effective_to=:to, active=:active, notes=:notes
                 WHERE id=:id RETURNING *
@@ -148,7 +142,6 @@ public class SlaPolicyService {
                 .addValue("vendor", blankToNull(p.vendor()))
                 .addValue("product", blankToNull(p.productType()))
                 .addValue("shift", blankToNull(p.shiftType()))
-                .addValue("band", blankToNull(p.shiftBand()))
                 .addValue("window", p.otaWindowMinutes() <= 0 ? 10 : p.otaWindowMinutes())
                 .addValue("target", p.otaTarget() <= 0 ? 95.0 : p.otaTarget())
                 .addValue("tolerance", p.tolerancePct())

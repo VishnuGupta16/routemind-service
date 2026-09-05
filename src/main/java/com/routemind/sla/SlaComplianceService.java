@@ -66,8 +66,7 @@ public class SlaComplianceService {
                            p.ota_window_minutes, p.ota_target, p.tolerance_pct,
                            p.name AS sla_name,
                            p.vendor AS s_vendor, p.business_unit AS s_bu,
-                           p.product_type AS s_product, p.shift_type AS s_shift,
-                           p.shift_band AS s_band
+                           p.product_type AS s_product, p.shift_type AS s_shift
                     FROM trips t
                     LEFT JOIN LATERAL (
                         SELECT s.* FROM sla_policy s
@@ -90,7 +89,7 @@ public class SlaComplianceService {
                        max(COALESCE(ota_target, :defaultTarget))  AS target,
                        max(COALESCE(tolerance_pct, :defaultTolerance)) AS tolerance_pct,
                        max(COALESCE(sla_name, 'none')) AS sla_name,
-                       max(COALESCE(s_vendor, s_bu, s_product, s_shift, s_band, 'all trips'))
+                       max(COALESCE(s_vendor, s_bu, s_product, s_shift, 'all trips'))
                            AS sla_scope
                 FROM scored
                 GROUP BY vendor, business_unit, %s
@@ -120,7 +119,7 @@ public class SlaComplianceService {
             // domain object about what MET means. The earlier version graded here by hand
             // and had it backwards: it called any shortfall a BREACH, and called exceeding
             // the target by under a point AT_RISK.
-            String status = new SlaPolicy(null, null, null, null, null, null, null,
+            String status = new SlaPolicy(null, null, null, null, null, null,
                     rs.getInt("window_minutes"), target, tolerance, null, 0,
                     null, null, true, null, null).verdict(ota).name();
 

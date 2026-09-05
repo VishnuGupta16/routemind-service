@@ -26,6 +26,19 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-jdbc'
     implementation 'org.springframework.kafka:spring-kafka'   // live GPS stream
+    // Notification channels. JavaMailSender is injected as an Optional, so with no SMTP
+    // configured the bean is simply absent and EmailChannel reports itself unavailable —
+    // the app still starts and the demo still runs end to end.
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
+
+    // QA chatbot. langchain4j is the JVM port of LangChain; the OpenAI module talks to any
+    // OpenAI-compatible endpoint, which is how it reaches Sarvam (custom base URL). The
+    // chatbot never computes a metric — it classifies the persona and formats the answer;
+    // the numbers come from the Java services. So if this dependency or the model is
+    // unavailable, the chatbot degrades to a deterministic answer rather than failing.
+    implementation 'dev.langchain4j:langchain4j:1.0.1'
+    implementation 'dev.langchain4j:langchain4j-open-ai:1.0.1'
+
     runtimeOnly   'org.postgresql:postgresql'
 
     testImplementation platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")

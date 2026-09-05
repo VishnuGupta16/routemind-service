@@ -7,12 +7,13 @@ import java.time.LocalDate;
  *
  * Any scope field left null is a WILDCARD, so one group-wide default can be overridden only
  * where a contract actually differs. Resolution picks the most specific match:
- * vendor (16) &gt; business unit (8) &gt; product type (4) &gt; exact shift (2) &gt; shift band (1),
- * ties broken by {@code priority} then the most recent {@code effectiveFrom}.
+ * vendor (8) &gt; business unit (4) &gt; product type (2) &gt; shift type (1), ties broken by
+ * {@code priority} then the most recent {@code effectiveFrom}.
  *
- * An exact shift time outranks a band because it is the narrower commitment. In practice
- * you configure against the band — there are 100 distinct shift times but only 6 bands, and
- * the bands are where performance actually separates (MORNING 92.3% vs EARLY 99.4%).
+ * Shift scoping is by EXACT shift time, deliberately. {@code trips.shift_band} exists and is
+ * populated by the ETL, but it takes no part in SLA resolution — a contract commits to a
+ * clock time, not to a bucket we invented. The band is available for reporting and can be
+ * brought into resolution later without a migration.
  *
  * The dates make it temporal: renegotiating a contract adds a row rather than overwriting
  * one, so historical months stay scored against the SLA that was actually in force then —
@@ -24,8 +25,7 @@ public record SlaPolicy(
         String businessUnit,      // null = any
         String vendor,            // null = any
         String productType,       // null = any
-        String shiftType,         // null = any exact shift time, e.g. "09:30"
-        String shiftBand,         // null = any band
+        String shiftType,         // null = any; an EXACT shift time, e.g. "09:30"
         int otaWindowMinutes,
         double otaTarget,
         Double tolerancePct,      // null = fall back to the global at-risk margin
@@ -42,13 +42,17 @@ public record SlaPolicy(
 
     public enum Verdict { MET, AT_RISK, BREACH }
 
-    /** How specific this policy is — higher wins during resolution. */
+    /**
+     * How specific this policy is — higher wins during resolution.
+     *
+     * Distinct powers of two, so no two scope combinations can tie: a tie would fall
+     * through to `priority` and pick essentially at random.
+     */
     public int specificity() {
-        return (vendor != null ? 16 : 0)
-                + (businessUnit != null ? 8 : 0)
-                + (productType != null ? 4 : 0)
-                + (shiftType != null ? 2 : 0)
-                + (shiftBand != null ? 1 : 0);
+        return (vendor != null ? 8 : 0)
+                + (businessUnit != null ? 4 : 0)
+                + (productType != null ? 2 : 0)
+                + (shiftType != null ? 1 : 0);
     }
 
     /** The +/- deviation allowed around the target before the verdict changes. */
@@ -80,7 +84,6 @@ public record SlaPolicy(
         if (businessUnit != null) sb.append(sb.isEmpty() ? "" : " · ").append(businessUnit);
         if (productType != null) sb.append(sb.isEmpty() ? "" : " · ").append(productType);
         if (shiftType != null) sb.append(sb.isEmpty() ? "" : " · ").append("shift ").append(shiftType);
-        if (shiftBand != null) sb.append(sb.isEmpty() ? "" : " · ").append(shiftBand.toLowerCase());
         return sb.isEmpty() ? "all trips (group default)" : sb.toString();
     }
 

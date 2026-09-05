@@ -1,0 +1,56 @@
+# =========================================================================
+# Spring Boot & Build Tools (Maven / Gradle)
+# =========================================================================
+target/
+build/
+out/
+.gradle/
+/build/
+!gradle-wrapper.jar
+!maven-wrapper.jar
+
+# Spring Boot specific caches and logs
+.sts4-cache/
+.springBeans/
+*.log
+logs/
+
+# =========================================================================
+# Local Configurations & Sensitive Secrets
+# =========================================================================
+# Ignore local environment variables and local properties override files
+.env
+.env.local
+*.properties.local
+*.yml.local
+*.yaml.local
+
+# DO NOT completely ignore application.properties unless you use a backup template.
+# Instead, pass sensitive credentials via environment variables.
+
+# =========================================================================
+# IDE Settings (IntelliJ IDEA, Eclipse, VS Code)
+# =========================================================================
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# Eclipse / Spring Tool Suite (STS)
+.metadata/
+.classpath
+.project
+.settings/
+.factorypath
+.apt_generated/
+
+# Visual Studio Code
+.vscode/
+
+# =========================================================================
+# System Files
+# =========================================================================
+.DS_Store
+Thumbs.db

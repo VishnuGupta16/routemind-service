@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * The catalogue of vendor × cab type × shift band combinations that are actually running,
+ * The catalogue of vendor × cab type × shift time combinations that are actually running,
  * and the SLA each one is measured against.
  *
  * This is the onboarding surface: an operator opens a vendor, sees every combination it
@@ -26,7 +26,7 @@ public class VendorFleetService {
 
     private static final RowMapper<VendorFleet> MAPPER = (ResultSet rs, int i) -> new VendorFleet(
             rs.getLong("id"), rs.getString("business_unit"), rs.getString("vendor"),
-            rs.getString("product_type"), rs.getString("shift_band"),
+            rs.getString("product_type"), rs.getString("shift_type"),
             rs.getLong("trips"), rs.getInt("vehicles"),
             date(rs, "first_seen"), date(rs, "last_seen"),
             (Double) rs.getObject("observed_ota"), (Double) rs.getObject("avg_delay_min"),
@@ -57,15 +57,15 @@ public class VendorFleetService {
      * resulting verdict.
      *
      * Resolution runs per row rather than once, because that is the whole point: two rows
-     * for the same vendor can legitimately resolve to different contracts — a bus in the
-     * morning and a cab at night are not the same commitment.
+     * for the same vendor can legitimately resolve to different contracts — a bus on the
+     * 09:30 shift and a cab at 22:00 are not the same commitment.
      */
     public List<VendorFleet> all(String vendor, String businessUnit, LocalDate on) {
         String sql = """
                 SELECT * FROM vendor_fleet
                 WHERE (:vendor IS NULL OR vendor = :vendor)
                   AND (:bu IS NULL OR business_unit = :bu)
-                ORDER BY vendor, product_type, shift_band
+                ORDER BY vendor, product_type, shift_type
                 """;
         MapSqlParameterSource p = new MapSqlParameterSource()
                 .addValue("vendor", vendor).addValue("bu", businessUnit);
@@ -74,7 +74,7 @@ public class VendorFleetService {
         List<VendorFleet> out = new ArrayList<>();
         for (VendorFleet f : jdbc.query(sql, p, MAPPER)) {
             out.add(f.withSla(policies.resolve(f.businessUnit(), f.vendor(), f.productType(),
-                    null, f.shiftBand(), when).orElse(null)));
+                    f.shiftType(), when).orElse(null)));
         }
         return out;
     }
@@ -93,9 +93,9 @@ public class VendorFleetService {
         out.put("productTypes", jdbc.queryForList(
                 "SELECT DISTINCT product_type FROM vendor_fleet WHERE vendor = :vendor "
                         + "ORDER BY product_type", p, String.class));
-        out.put("shiftBands", jdbc.queryForList(
-                "SELECT DISTINCT shift_band FROM vendor_fleet WHERE vendor = :vendor "
-                        + "ORDER BY shift_band", p, String.class));
+        out.put("shiftTypes", jdbc.queryForList(
+                "SELECT DISTINCT shift_type FROM vendor_fleet WHERE vendor = :vendor "
+                        + "ORDER BY shift_type", p, String.class));
         out.put("businessUnits", jdbc.queryForList(
                 "SELECT DISTINCT business_unit FROM vendor_fleet WHERE vendor = :vendor "
                         + "ORDER BY business_unit", p, String.class));

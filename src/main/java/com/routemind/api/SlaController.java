@@ -53,7 +53,6 @@ public class SlaController {
             m.put("vendor", p.vendor());
             m.put("productType", p.productType());
             m.put("shiftType", p.shiftType());
-            m.put("shiftBand", p.shiftBand());
             m.put("otaWindowMinutes", p.otaWindowMinutes());
             m.put("otaTarget", p.otaTarget());
             m.put("tolerancePct", p.tolerance());
@@ -90,17 +89,16 @@ public class SlaController {
             @RequestParam(required = false) String vendor,
             @RequestParam(required = false) String productType,
             @RequestParam(required = false) String shiftType,
-            @RequestParam(required = false) String shiftBand,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate on) {
-        return policies.resolve(businessUnit, vendor, productType, shiftType, shiftBand,
+        return policies.resolve(businessUnit, vendor, productType, shiftType,
                         on == null ? LocalDate.now() : on)
                 .map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
     }
 
     // ----------------------------------------------------------------- fleet
     /**
-     * Every vendor × cab type × shift band actually operating, each with the SLA that
+     * Every vendor × cab type × shift time actually operating, each with the SLA that
      * applies to it and the resulting verdict. This is the onboarding surface: you
      * configure a target against a combination the data says exists, with its current
      * on-time rate visible while you choose.

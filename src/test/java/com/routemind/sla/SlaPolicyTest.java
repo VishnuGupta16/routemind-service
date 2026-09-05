@@ -7,7 +7,9 @@ import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -17,31 +19,32 @@ import static org.junit.jupiter.api.Assertions.*;
  * This is the part most likely to be subtly wrong: if precedence resolves the wrong way, a
  * vendor gets judged against someone else's contract and every downstream verdict is
  * invalid while still looking perfectly plausible.
+ *
+ * Scoping is by EXACT shift time throughout. `shift_band` exists on the trip data for
+ * reporting but takes no part in resolution — a contract commits to a clock time.
  */
 class SlaPolicyTest {
 
-    /** Full scope: business unit, vendor, cab type, exact shift, shift band. */
     static SlaPolicy policy(String name, String bu, String vendor, String product,
-                            String shift, String band, int window, double target) {
-        return new SlaPolicy(1L, name, bu, vendor, product, shift, band, window, target,
+                            String shift, int window, double target) {
+        return new SlaPolicy(1L, name, bu, vendor, product, shift, window, target,
                 null, null, 0, null, null, true, null, "test");
     }
 
-    /** The common case — scoped by vendor / cab type / shift band. */
-    static SlaPolicy banded(String name, String vendor, String product, String band,
+    /** The common case — scoped by vendor / cab type / shift time. */
+    static SlaPolicy scoped(String name, String vendor, String product, String shift,
                             int window, double target) {
-        return policy(name, null, vendor, product, null, band, window, target);
+        return policy(name, null, vendor, product, shift, window, target);
     }
 
     /** Mirrors the SQL ordering in SlaPolicyService.SPECIFICITY_ORDER. */
     static SlaPolicy resolve(List<SlaPolicy> all, String bu, String vendor, String product,
-                             String shift, String band, LocalDate on) {
+                             String shift, LocalDate on) {
         return all.stream()
                 .filter(p -> p.businessUnit() == null || p.businessUnit().equals(bu))
                 .filter(p -> p.vendor() == null || p.vendor().equals(vendor))
                 .filter(p -> p.productType() == null || p.productType().equals(product))
                 .filter(p -> p.shiftType() == null || p.shiftType().equals(shift))
-                .filter(p -> p.shiftBand() == null || p.shiftBand().equals(band))
                 .filter(p -> p.appliesOn(on))
                 .max(Comparator.comparingInt(SlaPolicy::specificity)
                         .thenComparingInt(SlaPolicy::priority))
@@ -49,53 +52,52 @@ class SlaPolicyTest {
     }
 
     @Nested
-    @DisplayName("Specificity — vendor beats BU beats cab type beats shift beats band")
+    @DisplayName("Specificity — vendor beats BU beats cab type beats shift")
     class Specificity {
 
         @Test
         void wildcardPolicyIsLeastSpecific() {
-            assertEquals(0, policy("all", null, null, null, null, null, 10, 95).specificity());
+            assertEquals(0, policy("all", null, null, null, null, 10, 95).specificity());
         }
 
         @Test
         void eachDimensionOutranksTheNextOneDown() {
-            int vendor = policy("v", null, "V1", null, null, null, 10, 95).specificity();
-            int bu = policy("b", "bu1", null, null, null, null, 10, 95).specificity();
-            int product = policy("p", null, null, "BUS", null, null, 10, 95).specificity();
-            int shift = policy("s", null, null, null, "09:00", null, 10, 95).specificity();
-            int band = policy("z", null, null, null, null, "MORNING", 10, 95).specificity();
+            int vendor = policy("v", null, "V1", null, null, 10, 95).specificity();
+            int bu = policy("b", "bu1", null, null, null, 10, 95).specificity();
+            int product = policy("p", null, null, "BUS", null, 10, 95).specificity();
+            int shift = policy("s", null, null, null, "09:00", 10, 95).specificity();
 
             assertTrue(vendor > bu, "a vendor contract must beat a tenant-wide rule");
             assertTrue(bu > product);
             assertTrue(product > shift);
-            assertTrue(shift > band, "an exact shift time is a narrower commitment than a band");
         }
 
         @Test
         void vendorAloneStillBeatsEveryOtherDimensionCombined() {
-            // 16 > 8+4+2+1 — a signed vendor contract wins over any combination of scopes
-            int vendorOnly = policy("v", null, "V1", null, null, null, 10, 95).specificity();
-            int everythingElse =
-                    policy("x", "bu1", null, "BUS", "09:00", "MORNING", 10, 95).specificity();
+            // 8 > 4+2+1 — a signed vendor contract wins over any combination of scopes
+            int vendorOnly = policy("v", null, "V1", null, null, 10, 95).specificity();
+            int everythingElse = policy("x", "bu1", null, "BUS", "09:00", 10, 95).specificity();
             assertTrue(vendorOnly > everythingElse);
         }
 
         @Test
         void moreScopesAlwaysMeansMoreSpecific() {
-            assertTrue(policy("a", "bu1", "V1", "BUS", "09:00", "MORNING", 10, 95).specificity()
-                     > policy("b", "bu1", "V1", "BUS", "09:00", null, 10, 95).specificity());
+            assertTrue(policy("a", "bu1", "V1", "BUS", "09:00", 10, 95).specificity()
+                     > policy("b", "bu1", "V1", "BUS", null, 10, 95).specificity());
         }
 
         @Test
-        void weightsAreDistinctPowersOfTwoSoNoCombinationCanTie() {
-            // if two different scope sets could tie, resolution would fall through to
-            // priority and pick essentially at random
-            int[] weights = {16, 8, 4, 2, 1};
-            java.util.Set<Integer> sums = new java.util.HashSet<>();
-            for (int mask = 0; mask < 32; mask++) {
+        void noTwoScopeCombinationsCanTie() {
+            // A tie would fall through to `priority` and pick essentially at random, which
+            // is the failure mode where a vendor is quietly judged on the wrong contract.
+            int[] weights = {8, 4, 2, 1};
+            Set<Integer> seen = new HashSet<>();
+            for (int mask = 0; mask < 16; mask++) {
                 int s = 0;
-                for (int b = 0; b < 5; b++) if ((mask & (1 << b)) != 0) s += weights[b];
-                assertTrue(sums.add(s), "two scope combinations share specificity " + s);
+                for (int b = 0; b < weights.length; b++) {
+                    if ((mask & (1 << b)) != 0) s += weights[b];
+                }
+                assertTrue(seen.add(s), "two scope combinations share specificity " + s);
             }
         }
     }
@@ -106,45 +108,44 @@ class SlaPolicyTest {
         final LocalDate day = LocalDate.of(2026, 7, 15);
 
         final List<SlaPolicy> all = List.of(
-                policy("Group default", null, null, null, null, null, 10, 95.0),
-                policy("Bus SLA", null, null, "BUS", null, null, 15, 90.0),
-                policy("Morning band", null, null, null, null, "MORNING", 15, 92.0),
-                policy("Premium vendor", null, "Isha", null, null, null, 5, 97.0));
+                policy("Group default", null, null, null, null, 10, 95.0),
+                policy("Bus SLA", null, null, "BUS", null, 15, 90.0),
+                policy("Morning shift", null, null, null, "09:30", 15, 92.0),
+                policy("Premium vendor", null, "Isha", null, null, 5, 97.0));
 
         @Test
         void fallsBackToGroupDefaultWhenNothingSpecificMatches() {
-            SlaPolicy p = resolve(all, "bu1", "Unknown", "CAB", "20:00", "EVENING", day);
+            SlaPolicy p = resolve(all, "bu1", "Unknown", "CAB", "20:00", day);
             assertEquals("Group default", p.name());
             assertEquals(10, p.otaWindowMinutes());
         }
 
         @Test
         void cabTypeRuleBeatsGroupDefault() {
-            SlaPolicy p = resolve(all, "bu1", "Unknown", "BUS", "20:00", "EVENING", day);
+            SlaPolicy p = resolve(all, "bu1", "Unknown", "BUS", "20:00", day);
             assertEquals("Bus SLA", p.name());
             assertEquals(15, p.otaWindowMinutes(), "buses get the looser window they signed");
         }
 
         @Test
-        void cabTypeRuleAlsoBeatsAShiftBandRule() {
-            // a BUS running in the MORNING matches both; cab type is the stronger scope
-            SlaPolicy p = resolve(all, "bu1", "Unknown", "BUS", "09:00", "MORNING", day);
-            assertEquals("Bus SLA", p.name());
+        void cabTypeRuleAlsoBeatsAShiftRule() {
+            // a BUS on the 09:30 shift matches both; cab type is the stronger scope
+            assertEquals("Bus SLA", resolve(all, "bu1", "Unknown", "BUS", "09:30", day).name());
         }
 
         @Test
-        void bandRuleAppliesWhenNoCabTypeRuleMatches() {
-            SlaPolicy p = resolve(all, "bu1", "Unknown", "CAB", "09:00", "MORNING", day);
-            assertEquals("Morning band", p.name());
+        void shiftRuleAppliesWhenNoCabTypeRuleMatches() {
+            SlaPolicy p = resolve(all, "bu1", "Unknown", "CAB", "09:30", day);
+            assertEquals("Morning shift", p.name());
             assertEquals(92.0, p.otaTarget(),
-                    "morning runs at 92.3% group-wide, so a 95% morning target would "
+                    "the 09:30 shift runs at 89.9% group-wide, so a 95% target there would "
                             + "breach permanently and tell nobody anything");
         }
 
         @Test
         void vendorContractBeatsEveryScopedRule() {
-            // Isha running a BUS in the morning: the vendor's own contract must still win
-            SlaPolicy p = resolve(all, "bu1", "Isha", "BUS", "09:00", "MORNING", day);
+            // Isha running a BUS on the 09:30 shift: the vendor's own contract still wins
+            SlaPolicy p = resolve(all, "bu1", "Isha", "BUS", "09:30", day);
             assertEquals("Premium vendor", p.name());
             assertEquals(5, p.otaWindowMinutes());
             assertEquals(97.0, p.otaTarget());
@@ -154,13 +155,12 @@ class SlaPolicyTest {
         void aVendorCanPassGloballyAndStillMissItsOwnContract() {
             // 95.4% clears the group 95% target but misses a 97% premium commitment
             double achieved = 95.4;
-            SlaPolicy group = resolve(all, "bu1", "Other", "CAB", "20:00", "EVENING", day);
-            SlaPolicy premium = resolve(all, "bu1", "Isha", "CAB", "20:00", "EVENING", day);
+            SlaPolicy group = resolve(all, "bu1", "Other", "CAB", "20:00", day);
+            SlaPolicy premium = resolve(all, "bu1", "Isha", "CAB", "20:00", day);
 
             assertEquals(Verdict.MET, group.verdict(achieved), "passes the group rule");
             assertNotEquals(Verdict.MET, premium.verdict(achieved),
                     "the same performance must not read as MET against a 97% commitment");
-            // 1.6 points short of 97 is inside the default ±2 band, so it is a warning
             assertEquals(Verdict.AT_RISK, premium.verdict(achieved));
             assertEquals(1.6, premium.shortfall(achieved), 1e-9);
         }
@@ -168,9 +168,9 @@ class SlaPolicyTest {
         @Test
         void aPremiumContractWithATightBandTurnsTheSameMissIntoABreach() {
             // identical performance, identical target — only the tolerance differs
-            SlaPolicy loose = new SlaPolicy(1L, "loose", null, "Isha", null, null, null,
+            SlaPolicy loose = new SlaPolicy(1L, "loose", null, "Isha", null, null,
                     5, 97.0, 2.0, null, 0, null, null, true, null, "t");
-            SlaPolicy tight = new SlaPolicy(2L, "tight", null, "Isha", null, null, null,
+            SlaPolicy tight = new SlaPolicy(2L, "tight", null, "Isha", null, null,
                     5, 97.0, 0.5, null, 0, null, null, true, null, "t");
 
             assertEquals(Verdict.AT_RISK, loose.verdict(95.4));
@@ -182,7 +182,7 @@ class SlaPolicyTest {
     @DisplayName("Tolerance — the +/- deviation allowed before the verdict changes")
     class Tolerance {
 
-        final SlaPolicy p = banded("Premium", "V1", "CAB", "MORNING", 10, 95.0);
+        final SlaPolicy p = scoped("Premium", "V1", "CAB", "09:30", 10, 95.0);
 
         @Test
         void defaultsToTwoPointsWhenThePolicyDoesNotSetOne() {
@@ -208,18 +208,8 @@ class SlaPolicyTest {
         }
 
         @Test
-        void aTighterContractCanSetATighterBand() {
-            SlaPolicy strict = new SlaPolicy(1L, "strict", null, "V1", null, null, null,
-                    5, 97.0, 0.5, null, 0, null, null, true, null, "t");
-            assertEquals(0.5, strict.tolerance());
-            assertEquals(Verdict.AT_RISK, strict.verdict(96.6));
-            assertEquals(Verdict.BREACH, strict.verdict(96.4),
-                    "a premium contract should not get the same slack as a shuttle one");
-        }
-
-        @Test
         void aZeroOrNegativeToleranceFallsBackRatherThanMakingEveryMissABreach() {
-            SlaPolicy zero = new SlaPolicy(1L, "z", null, "V1", null, null, null,
+            SlaPolicy zero = new SlaPolicy(1L, "z", null, "V1", null, null,
                     10, 95.0, 0.0, null, 0, null, null, true, null, "t");
             assertEquals(SlaPolicy.DEFAULT_TOLERANCE_PCT, zero.tolerance());
         }
@@ -236,7 +226,7 @@ class SlaPolicyTest {
     class Temporal {
 
         SlaPolicy dated(LocalDate from, LocalDate to) {
-            return new SlaPolicy(1L, "term", null, "V1", null, null, null, 10, 95.0,
+            return new SlaPolicy(1L, "term", null, "V1", null, null, 10, 95.0,
                     null, null, 0, from, to, true, null, "test");
         }
 
@@ -267,24 +257,23 @@ class SlaPolicyTest {
 
         @Test
         void renegotiationSplitsThePeriodCorrectly() {
-            // old terms to 30 Jun, new terms from 1 Jul — June and July score differently
-            SlaPolicy oldTerms = new SlaPolicy(1L, "old", null, "V1", null, null, null,
+            SlaPolicy oldTerms = new SlaPolicy(1L, "old", null, "V1", null, null,
                     15, 90.0, null, null, 0, null, LocalDate.of(2026, 6, 30), true, null, "t");
-            SlaPolicy newTerms = new SlaPolicy(2L, "new", null, "V1", null, null, null,
+            SlaPolicy newTerms = new SlaPolicy(2L, "new", null, "V1", null, null,
                     5, 97.0, null, null, 0, LocalDate.of(2026, 7, 1), null, true, null, "t");
             List<SlaPolicy> all = List.of(oldTerms, newTerms);
 
-            assertEquals("old", resolve(all, "b", "V1", "CAB", "09:00", "MORNING",
+            assertEquals("old", resolve(all, "b", "V1", "CAB", "09:30",
                     LocalDate.of(2026, 6, 15)).name());
-            assertEquals("new", resolve(all, "b", "V1", "CAB", "09:00", "MORNING",
+            assertEquals("new", resolve(all, "b", "V1", "CAB", "09:30",
                     LocalDate.of(2026, 7, 15)).name());
         }
 
         @Test
         void theSameMonthCanScoreDifferentlyUnderTheTwoTerms() {
-            SlaPolicy oldTerms = new SlaPolicy(1L, "old", null, "V1", null, null, null,
+            SlaPolicy oldTerms = new SlaPolicy(1L, "old", null, "V1", null, null,
                     15, 90.0, null, null, 0, null, LocalDate.of(2026, 6, 30), true, null, "t");
-            SlaPolicy newTerms = new SlaPolicy(2L, "new", null, "V1", null, null, null,
+            SlaPolicy newTerms = new SlaPolicy(2L, "new", null, "V1", null, null,
                     5, 97.0, null, null, 0, LocalDate.of(2026, 7, 1), null, true, null, "t");
             double achieved = 93.5;
             assertEquals(Verdict.MET, oldTerms.verdict(achieved));
@@ -295,7 +284,7 @@ class SlaPolicyTest {
 
         @Test
         void inactivePolicyNeverApplies() {
-            SlaPolicy off = new SlaPolicy(1L, "off", null, "V1", null, null, null, 10, 95.0,
+            SlaPolicy off = new SlaPolicy(1L, "off", null, "V1", null, null, 10, 95.0,
                     null, null, 0, null, null, false, null, "t");
             assertFalse(off.appliesOn(LocalDate.of(2026, 7, 1)));
         }
@@ -308,23 +297,21 @@ class SlaPolicyTest {
         @Test
         void wildcardPolicyReadsAsGroupDefault() {
             assertEquals("all trips (group default)",
-                    policy("d", null, null, null, null, null, 10, 95).scopeLabel());
+                    policy("d", null, null, null, null, 10, 95).scopeLabel());
         }
 
         @Test
         void scopedPolicyListsItsDimensions() {
-            String label = policy("x", "vanta-Sea", "Isha", "BUS", "09:00", "MORNING", 5, 97)
-                    .scopeLabel();
+            String label = policy("x", "vanta-Sea", "Isha", "BUS", "09:30", 5, 97).scopeLabel();
             assertTrue(label.contains("Isha"));
             assertTrue(label.contains("vanta-Sea"));
             assertTrue(label.contains("BUS"));
-            assertTrue(label.contains("09:00"));
-            assertTrue(label.contains("morning"));
+            assertTrue(label.contains("09:30"));
         }
 
         @Test
         void termsLabelShowsTargetWindowAndTolerance() {
-            String terms = banded("x", "V1", "BUS", "MORNING", 15, 92.0).termsLabel();
+            String terms = scoped("x", "V1", "BUS", "09:30", 15, 92.0).termsLabel();
             assertTrue(terms.contains("92.0%"), terms);
             assertTrue(terms.contains("15 min"), terms);
             assertTrue(terms.contains("2.0"), terms);
@@ -336,13 +323,13 @@ class SlaPolicyTest {
     class Fleet {
 
         VendorFleet combo(long trips, Double ota) {
-            return new VendorFleet(1L, "bu1", "V1", "BUS", "MORNING", trips, 4,
+            return new VendorFleet(1L, "bu1", "V1", "BUS", "09:30", trips, 4,
                     LocalDate.of(2026, 5, 1), LocalDate.of(2026, 7, 31), ota, 6.0, null, null);
         }
 
         @Test
         void aTinyCombinationIsNotGivenAVerdict() {
-            VendorFleet f = combo(12, 50.0).withSla(banded("x", "V1", "BUS", "MORNING", 10, 95));
+            VendorFleet f = combo(12, 50.0).withSla(scoped("x", "V1", "BUS", "09:30", 10, 95));
             assertFalse(f.judgeable());
             assertNull(f.verdict(), "12 trips at 50% tells you nothing — do not score it");
             assertNotNull(f.appliedSla(), "but it must still show which SLA would apply");
@@ -350,7 +337,7 @@ class SlaPolicyTest {
 
         @Test
         void aCombinationWithEnoughTripsIsScored() {
-            VendorFleet f = combo(5_000, 92.9).withSla(banded("x", "V1", "BUS", "MORNING", 10, 95));
+            VendorFleet f = combo(5_000, 92.9).withSla(scoped("x", "V1", "BUS", "09:30", 10, 95));
             assertTrue(f.judgeable());
             assertEquals(Verdict.BREACH, f.verdict());
         }
@@ -363,7 +350,7 @@ class SlaPolicyTest {
 
         @Test
         void labelIsReadable() {
-            assertEquals("V1 · BUS · morning", combo(100, 95.0).label());
+            assertEquals("V1 · BUS · 09:30", combo(100, 95.0).label());
         }
     }
 }

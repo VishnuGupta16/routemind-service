@@ -26,11 +26,36 @@ spring:
 server:
   port: 8080
 
+# Uncomment and fill in to send real email (then set routemind.notify.dry-run: false):
+# spring:
+#   mail:
+#     host: smtp.example.com
+#     port: 587
+#     username: ${MAIL_USER}
+#     password: ${MAIL_PASSWORD}
+#     properties.mail.smtp.starttls.enable: true
+
 # =====================================================================
 # The RuleSet — every threshold, target and routing rule lives here.
 # A new tenant is a config change, never a code change.
 # =====================================================================
 routemind:
+
+  # The scheduler ticks on this fixed interval and reads WHEN to run each alert from the
+  # `alert_schedule` table — so an admin changes a cadence from the UI, not by redeploying.
+  # This tick is the only fixed piece of timing in the system.
+  schedule:
+    enabled: true
+    tick-ms: 60000
+
+  notify:
+    # TRUE by default on purpose: the demo runs on a laptop with no mail server, and a dry
+    # run still exercises the whole path — report generated, subscribers resolved, routing
+    # decided, outcome written to notification_log — logging the message instead of sending
+    # it. Set false and configure spring.mail.* to actually send.
+    dry-run: true
+    from: routemind@example.com
+    subject-prefix: "[RouteMind]"
 
   sla:
     ota-window-minutes: 10      # a trip is "on time" within this many minutes
@@ -131,6 +156,19 @@ routemind:
       enabled: false            # true + api-key => LLM narrative, else deterministic
       api-key: ""
       model: sarvam-105b
+
+  # QA chatbot (langchain4j -> Sarvam). The key is read from the environment, never
+  # written here — export SARVAM_API_KEY before starting. With no key the chatbot still
+  # answers, deterministically, and says so.
+  chat:
+    enabled: true
+    base-url: https://api.sarvam.ai/v1
+    model: sarvam-m
+    api-key: ${SARVAM_API_KEY:}
+    # how far back the chatbot looks when a question names no period
+    default-lookback-days: 30
+    # the most recent date in the loaded demo data — "now" for the demo
+    as-of: 2026-07-31
 
   # ---- live GPS layer -------------------------------------------------
   live:

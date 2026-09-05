@@ -102,14 +102,21 @@ class NarrativeAndPersonaTest {
             assertEquals(93.2, out.value(), "attaching narrative must not alter the numbers");
         }
 
+        /** A named stand-in for "the LLM generator" — named so activeGenerator() (which
+         *  reports getClass().getSimpleName()) returns something we can actually assert on.
+         *  An anonymous class would silently report "" here (that's the JLS behaviour for
+         *  Class.getSimpleName() on an anonymous class), which is what made this test wrong
+         *  rather than the selection logic it was meant to catch. */
+        static final class FakeLlmGenerator implements NarrativeGenerator {
+            public String narrate(Finding f, String persona) { return "LLM"; }
+            public int priority() { return 10; }
+        }
+
         @Test
         void higherPriorityGeneratorWins() {
-            NarrativeGenerator fake = new NarrativeGenerator() {
-                public String narrate(Finding f, String persona) { return "LLM"; }
-                public int priority() { return 10; }
-            };
-            NarrativeService svc = new NarrativeService(List.of(new TemplateNarrativeGenerator(), fake));
-            assertTrue(svc.activeGenerator().contains("$"),  // the anonymous class
+            NarrativeService svc = new NarrativeService(
+                    List.of(new TemplateNarrativeGenerator(), new FakeLlmGenerator()));
+            assertEquals("FakeLlmGenerator", svc.activeGenerator(),
                     "the higher-priority generator should be selected");
         }
     }

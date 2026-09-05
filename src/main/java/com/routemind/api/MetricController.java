@@ -29,6 +29,19 @@ public class MetricController {
     }
 
     /**
+     * GET /api/metrics?from=2026-07-01&to=2026-07-31 — every registered metric, with
+     * context, in one call. This is what the dashboard board renders; MetricService.all()
+     * already assembled this, it just had no route until now.
+     */
+    @GetMapping("/metrics")
+    public List<MetricWithContext> all(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) String businessUnit) {
+        return metrics.all(from, to, businessUnit);
+    }
+
+    /**
      * GET /api/metrics/{id}/peers — the third reference point.
      * Ranks every business unit on this metric so a number can be judged against the estate.
      */
