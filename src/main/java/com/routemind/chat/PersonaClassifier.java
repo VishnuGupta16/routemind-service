@@ -28,6 +28,11 @@ public class PersonaClassifier {
 
     private final LlmChat model;
 
+    /** Same question, same asker — no reason to pay for a second classification. */
+    private final java.util.Map<String, Result> cache =
+            new java.util.concurrent.ConcurrentHashMap<>();
+    private static final int CACHE_MAX = 500;
+
     public PersonaClassifier(LlmChat model) { this.model = model; }
 
     private static final String SYSTEM = """
@@ -73,6 +78,15 @@ public class PersonaClassifier {
     public Result classify(String question) {
         // No model wired at all => straight to the deterministic floor.
         if (model == null) return keyword(question);
+        String key = question.trim().toLowerCase(Locale.ROOT);
+        Result hit = cache.get(key);
+        if (hit != null) return hit;
+        Result r = classifyUncached(question);
+        if (cache.size() < CACHE_MAX) cache.put(key, r);
+        return r;
+    }
+
+    private Result classifyUncached(String question) {
         // One shared client: same credential, same reasoning-token headroom, and every
         // call lands in the trace. The langchain4j client this used to hold read a
         // different property, was never configured, and so silently classified by keyword

@@ -4,6 +4,7 @@ import com.routemind.llm.LlmChat;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 import java.util.Optional;
 
@@ -92,6 +93,13 @@ public class QueryPlanner {
 
     private final LlmChat llm;
 
+    /**
+     * Routing is a pure function of the question text, so the same question never needs a
+     * second inference. Bounded because the key is free-form user input.
+     */
+    private final Map<String, Plan> routeCache = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final int ROUTE_CACHE_MAX = 500;
+
     public QueryPlanner(LlmChat llm) { this.llm = llm; }
 
     private static final String SYSTEM = """
@@ -117,6 +125,15 @@ public class QueryPlanner {
      * floor alone is good enough to run with no API key at all.
      */
     public Plan plan(String question) {
+        String key = question.trim().toLowerCase(Locale.ROOT);
+        Plan cached = routeCache.get(key);
+        if (cached != null) return cached;
+        Plan p = route(question);
+        if (routeCache.size() < ROUTE_CACHE_MAX) routeCache.put(key, p);
+        return p;
+    }
+
+    private Plan route(String question) {
         Filters f = extractFilters(question);
         Optional<String> answer = llm.ask(SYSTEM, "Question: " + question, 40, "tool-routing");
         if (answer.isPresent()) {
