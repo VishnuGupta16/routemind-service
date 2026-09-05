@@ -1,3 +1,8 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>RouteMind Design Deck</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -145,6 +150,8 @@
   a { color: var(--signal); }
   :focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
 </style>
+</head>
+<body>
 
 <div class="deck">
 
@@ -172,7 +179,7 @@
     <p class="lede">One Spring Boot service over Postgres. The important property is the <strong>boundary</strong>: every number is computed in Java from SQL before the model is called, so the model can phrase an answer but never produce one.</p>
 
     <figure class="diagram">
-```mermaid
+      <div class="mermaid">
 flowchart TB
     subgraph client["Client"]
         NG["Angular 18<br/>dashboard · alerts · chat"]
@@ -215,7 +222,7 @@ flowchart TB
     classDef store fill:#E7EFF8,stroke:#1F5FA8,color:#12161C
     class LLM model
     class PG store
-```
+      </div>
       <figcaption><strong>The model is on a dotted line.</strong> Every solid arrow is deterministic Java and SQL; the two dotted arrows are the only places an LLM is consulted — to choose a tool, and to phrase the one-sentence answer. Cut both and the product still answers, in template prose.</figcaption>
     </figure>
 
@@ -239,7 +246,7 @@ flowchart TB
     <p class="lede">The window is split into six buckets and asked two questions — is it drifting, and did the last bucket break from the run before it. Then a second gate asks whether it is <em>close enough to the target to matter</em>, which is what separates a signal from noise.</p>
 
     <figure class="diagram">
-```mermaid
+      <div class="mermaid">
 flowchart TB
     A["Metric over the window"] --> B["Split into 6 buckets<br/>≥50 samples each"]
     B --> C{"series length ≥ 3?"}
@@ -268,7 +275,7 @@ flowchart TB
     class G,I,N bad
     class J ok
     class M,D drop
-```
+      </div>
       <figcaption><strong>The gate on the right is the part that was missing.</strong> Shape alone put "EV share sliding to 10.9% against a 9.0% floor" on the board as a trend to get ahead of — while it sat 21% clear of target. A slide now has to be near the target it would breach; a sudden step and an existing breach still always surface.</figcaption>
     </figure>
 
@@ -317,7 +324,7 @@ margin = min(atRiskMargin, |target| * 5%)</pre>
     <p class="lede">Shift-share decomposition. For each slice: how many <em>extra</em> late trips it added versus the prior window, converted into the points of total OTA it explains. Additive, so the drivers rank and sum back to the headline.</p>
 
     <figure class="diagram">
-```mermaid
+      <div class="mermaid">
 flowchart LR
     Q["OTA fell 2.0 pts<br/>97.4% → 95.4%"] --> D1["by direction"]
     Q --> D2["by shift band"]
@@ -339,7 +346,7 @@ flowchart LR
     classDef ev fill:#E7EFF8,stroke:#1F5FA8,color:#12161C
     class R1,R2 hot
     class EV ev
-```
+      </div>
       <figcaption><strong>Five lenses on one drop, not a partition.</strong> A Denver morning CAB trip appears in three rows, so each dimension is ranked within itself. The SQL that produced each driver ships inside the API response — which is what makes a finding an escalation rather than an opinion.</figcaption>
     </figure>
 
@@ -358,7 +365,7 @@ flowchart LR
     <p class="lede">The model is consulted three times and never for a number: who is asking, which analysis answers it, and how to phrase the one-line reply. Everything between those is Java over SQL.</p>
 
     <figure class="diagram">
-```mermaid
+      <div class="mermaid">
 sequenceDiagram
     autonumber
     participant U as User
@@ -393,7 +400,7 @@ sequenceDiagram
     C-->>U: ANSWER + WHY + ACTION + BENCHMARK + EVIDENCE
 
     Note over C,L: any LLM step failing<br/>falls back to template prose
-```
+      </div>
       <figcaption><strong>Three small model calls, not one big one.</strong> An earlier design handed the model the whole analysis to re-emit; it reasoned past 8,700 tokens without finishing and padded what it did produce with hypotheticals. Asking only for the answer line costs ~80 tokens and finishes in under a second.</figcaption>
     </figure>
 
@@ -442,7 +449,7 @@ sequenceDiagram
     <p class="lede">The scheduler ticks on a fixed interval and reads <em>when</em> from the database, so a cadence changes from the UI rather than a redeploy. Alerts land in the app, so the whole loop runs with no mail server.</p>
 
     <figure class="diagram">
-```mermaid
+      <div class="mermaid">
 stateDiagram-v2
     [*] --> Armed: schedule created<br/>next_run_at computed from cron
     Armed --> Due: now() ≥ next_run_at
@@ -464,7 +471,7 @@ stateDiagram-v2
         SUPPRESSED with a reason, so it is never
         confused with a broken job.
     end note
-```
+      </div>
       <figcaption><strong>Re-arming happens on every path, including failure.</strong> A schedule that stops rescheduling itself when something goes wrong goes quiet permanently and nobody notices — which is exactly what a bug in the due-query caused: every schedule took the "first sighting, arm only" branch forever and no report ever ran.</figcaption>
     </figure>
 
@@ -555,7 +562,7 @@ chat-answer       <span class="kw">OK</span>      955ms   81</pre>
     <p class="lede">Three SPIs and a config file. A new metric, a new report and a new delivery channel are each one class; a new tenant is neither.</p>
 
     <figure class="diagram">
-```mermaid
+      <div class="mermaid">
 flowchart LR
     subgraph add["Add a class"]
         A1["implements MetricDefinition<br/>@Component"]
@@ -580,7 +587,7 @@ flowchart LR
 
     classDef good fill:#E5F0EA,stroke:#2E6B4F,color:#12161C
     class D good
-```
+      </div>
       <figcaption><strong>Nothing below the line knows about personas; nothing above it knows about SQL.</strong> Adding a metric touches one file — the metric board, the rule evaluator, the narrative layer and the persona router all pick it up from the registry.</figcaption>
     </figure>
 
@@ -602,3 +609,33 @@ flowchart LR
 
   <footer>RouteMind · figures computed live from the loaded dataset · docs/routemind-design-deck.html</footer>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark' ||
+    (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches && document.documentElement.getAttribute('data-theme') !== 'light');
+
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: isDark ? 'dark' : 'neutral',
+    fontFamily: '"IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    flowchart: { curve: 'basis', htmlLabels: true },
+    themeVariables: isDark ? {
+      darkMode: true,
+      background: '#1D222B',
+      primaryColor: '#161A21',
+      primaryTextColor: '#E8EBEF',
+      primaryBorderColor: '#363E4A',
+      lineColor: '#9BA5B4',
+      secondaryColor: '#14243A',
+      tertiaryColor: '#1D222B',
+      fontFamily: '"IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      fontSize: '13px'
+    } : {
+      fontFamily: '"IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      fontSize: '13px'
+    }
+  });
+</script>
+</body>
+</html>
