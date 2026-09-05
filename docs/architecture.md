@@ -112,6 +112,36 @@ path, which is what makes the demo honest.
 | `weekly_detailed_report` | Mondays 08:00 IST | Facilities head |
 | `facilities_head_briefing` | 1st of month 08:00 IST | Facilities head |
 
+## What gets alerted, and what does not
+
+Shape alone is not a reason to alert.
+
+| Condition | On the board? | Why |
+|---|---|---|
+| `SUDDEN` step, any level | yes | A sharp break from a stable run is an incident, not a drift |
+| `INCREMENTAL` slide, within 10% of target | yes | About to breach — get ahead of it |
+| `INCREMENTAL` slide, comfortably clear | **no** | EV share drifting to 10.9% against a 9.0% floor is fine; alerting on it is noise, and noise is what makes a stream get ignored |
+| `BREACH`, any shape | yes | "Below contract but recovering" is still below contract |
+| `STABLE` / `IMPROVING`, inside target | no | Nothing to do |
+
+The at-risk margin is capped at **5% of the target** rather than the flat 2.0 units it was
+configured with. Two points is a sensible band around a 95% OTA target and a nonsensical
+one around a 9% EV floor, where it marked a metric sitting 21% clear of target as at risk.
+
+## Caching — where the cost actually is
+
+| Call | Cost | Cached by |
+|---|---|---|
+| `ota-narrative` | ~7,600 tokens, ~50s | period + business unit + the movement itself |
+| `persona-classify` | ~800 tokens | question text |
+| `tool-routing` | ~1,000 tokens | question text |
+| `chat-answer` | ~80 tokens | not cached — it is cheap |
+
+Routing and persona are pure functions of the question text, so the same question never
+pays twice. The narrative is keyed on the numbers: same period, same unit, same movement,
+same paragraph. Only a real LLM answer is cached — caching a fallback would pin the
+endpoint to deterministic text for the life of the process after one transient failure.
+
 ## LLM call tracing
 
 `LlmTrace` records every outbound model call — purpose, latency, tokens, outcome —

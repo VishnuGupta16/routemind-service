@@ -93,9 +93,15 @@ public class MetricDegradationService {
         for (String id : metrics.metricIds()) {
             signal(id, from, to, businessUnit).ifPresent(s -> {
                 boolean worsening = s.shape() == Shape.SUDDEN || s.shape() == Shape.INCREMENTAL;
-                if (worsening && (s.shape() == Shape.SUDDEN || nearTarget(s))) {
-                    out.add(s);
-                }
+                // A SUDDEN step is worth knowing about from any level — it is an incident.
+                // A slide only matters once it is close to the target it would breach.
+                boolean movingBadly = worsening
+                        && (s.shape() == Shape.SUDDEN || nearTarget(s));
+                // And a metric already OUTSIDE its target belongs on the board whatever its
+                // shape: "below contract but recovering" is still below contract, and
+                // hiding it because the trend is kind would lose a real breach.
+                boolean alreadyOut = "BREACH".equals(s.status());
+                if (movingBadly || alreadyOut) out.add(s);
             });
         }
         out.sort(Comparator.comparingDouble(Signal::urgency).reversed());

@@ -1,0 +1,604 @@
+<title>RouteMind Design Deck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+  :root {
+    --paper:      #FAFAF8;
+    --surface:    #FFFFFF;
+    --surface-2:  #F3F4F1;
+    --ink:        #12161C;
+    --slate:      #5A6472;
+    --slate-soft: #8A93A0;
+    --rule:       #DCDFD9;
+    --rule-firm:  #C3C8C0;
+    --signal:     #1F5FA8;
+    --signal-dim: #E7EFF8;
+    --amber:      #B4741A;
+    --amber-dim:  #FAF0DE;
+    --red:        #A63328;
+    --red-dim:    #FAE9E6;
+    --green:      #2E6B4F;
+    --green-dim:  #E5F0EA;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --slide-pad: 44px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:#0E1116; --surface:#161A21; --surface-2:#1D222B; --ink:#E8EBEF;
+      --slate:#9BA5B4; --slate-soft:#6E7887; --rule:#262C36; --rule-firm:#363E4A;
+      --signal:#6FA8E8; --signal-dim:#14243A; --amber:#D9A044; --amber-dim:#2C2312;
+      --red:#E0796C; --red-dim:#2E1815; --green:#6FBF95; --green-dim:#12251C;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:#0E1116; --surface:#161A21; --surface-2:#1D222B; --ink:#E8EBEF;
+    --slate:#9BA5B4; --slate-soft:#6E7887; --rule:#262C36; --rule-firm:#363E4A;
+    --signal:#6FA8E8; --signal-dim:#14243A; --amber:#D9A044; --amber-dim:#2C2312;
+    --red:#E0796C; --red-dim:#2E1815; --green:#6FBF95; --green-dim:#12251C;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: var(--sans); font-size: 15px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .deck { max-width: 1180px; margin: 0 auto; padding: 40px 24px 96px;
+          display: flex; flex-direction: column; gap: 30px; }
+
+  .deck-head {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    gap: 24px; flex-wrap: wrap; padding-bottom: 18px; border-bottom: 2px solid var(--ink);
+  }
+  .deck-title { font-size: 30px; font-weight: 700; letter-spacing: -0.025em; margin: 0; }
+  .deck-sub { margin: 6px 0 0; color: var(--slate); font-size: 14px; max-width: 64ch; }
+  .deck-meta { font-family: var(--mono); font-size: 11px; color: var(--slate);
+               text-align: right; line-height: 1.7; font-variant-numeric: tabular-nums; }
+
+  .slide {
+    background: var(--surface); border: 1px solid var(--rule-firm); border-radius: 3px;
+    padding: var(--slide-pad); display: flex; flex-direction: column; gap: 22px;
+  }
+  .slide-head { display: flex; gap: 18px; align-items: baseline; }
+  .slide-num { font-family: var(--mono); font-size: 12px; font-weight: 600;
+               color: var(--signal); letter-spacing: 0.06em; flex: none; padding-top: 4px; }
+  .slide-titles { display: flex; flex-direction: column; gap: 5px; }
+  .eyebrow { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase;
+             letter-spacing: 0.13em; color: var(--slate-soft); }
+  h2 { margin: 0; font-size: 25px; font-weight: 650; letter-spacing: -0.02em;
+       line-height: 1.2; text-wrap: balance; }
+  .lede { margin: 0; color: var(--slate); font-size: 14.5px; max-width: 76ch; }
+  h3 { margin: 0 0 10px; font-size: 12px; font-family: var(--mono); font-weight: 600;
+       text-transform: uppercase; letter-spacing: 0.1em; color: var(--slate); }
+
+  .cols { display: grid; gap: 26px; }
+  .c2 { grid-template-columns: 1fr 1fr; }
+  .c3 { grid-template-columns: repeat(3, 1fr); }
+  .c-3-2 { grid-template-columns: 3fr 2fr; }
+  @media (max-width: 900px) {
+    .c2, .c3, .c-3-2 { grid-template-columns: 1fr; }
+    :root { --slide-pad: 26px; }
+  }
+
+  .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .scroll-x { overflow-x: auto; }
+
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th { text-align: left; font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+       letter-spacing: 0.08em; color: var(--slate); font-weight: 600;
+       padding: 0 12px 7px 0; border-bottom: 1px solid var(--rule-firm); white-space: nowrap; }
+  td { padding: 8px 12px 8px 0; border-bottom: 1px solid var(--rule); vertical-align: baseline; }
+  tbody tr:last-child td { border-bottom: none; }
+  .num { font-family: var(--mono); font-variant-numeric: tabular-nums;
+         text-align: right; white-space: nowrap; }
+
+  .pill { display: inline-block; font-family: var(--mono); font-size: 10px; font-weight: 600;
+          letter-spacing: 0.05em; padding: 2px 7px; border-radius: 2px; white-space: nowrap; }
+  .p-red { background: var(--red-dim); color: var(--red); }
+  .p-amber { background: var(--amber-dim); color: var(--amber); }
+  .p-green { background: var(--green-dim); color: var(--green); }
+  .p-blue { background: var(--signal-dim); color: var(--signal); }
+
+  code, pre { font-family: var(--mono); }
+  code { font-size: 0.92em; background: var(--surface-2); padding: 1px 5px; border-radius: 2px; }
+  pre { margin: 0; background: var(--surface-2); border: 1px solid var(--rule);
+        border-left: 2px solid var(--signal); padding: 13px 15px; font-size: 11.5px;
+        line-height: 1.65; overflow-x: auto; color: var(--ink); }
+  pre code { background: none; padding: 0; }
+  .cmt { color: var(--slate-soft); }
+  .kw { color: var(--signal); font-weight: 600; }
+
+  ul.tight { margin: 0; padding-left: 17px; display: flex; flex-direction: column; gap: 7px; }
+  ul.tight li::marker { color: var(--slate-soft); }
+
+  .note { font-size: 12.5px; color: var(--slate);
+          border-left: 2px solid var(--rule-firm); padding-left: 13px; }
+
+  figure { margin: 0; }
+  figure.diagram {
+    background: var(--surface-2); border: 1px solid var(--rule);
+    border-radius: 3px; padding: 20px 18px 14px; overflow-x: auto;
+  }
+  figcaption { font-size: 12.5px; color: var(--slate); margin-top: 12px;
+               padding-top: 10px; border-top: 1px solid var(--rule); }
+  .mermaid { display: flex; justify-content: center; min-width: 0; }
+
+  .guard { display: grid; grid-template-columns: 18px 1fr; gap: 11px; font-size: 13px;
+           align-items: start; padding: 9px 0; border-bottom: 1px solid var(--rule); }
+  .guard:last-child { border-bottom: none; }
+  .guard-m { font-family: var(--mono); font-weight: 600; }
+
+  .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px;
+              background: var(--rule); border: 1px solid var(--rule); }
+  @media (max-width: 760px) { .stat-row { grid-template-columns: repeat(2, 1fr); } }
+  .stat { background: var(--surface); padding: 15px 16px;
+          display: flex; flex-direction: column; gap: 3px; }
+  .stat-v { font-family: var(--mono); font-size: 20px; font-weight: 600;
+            letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .stat-l { font-size: 11px; color: var(--slate); line-height: 1.35; }
+
+  footer { text-align: center; font-family: var(--mono); font-size: 11px;
+           color: var(--slate-soft); padding-top: 8px; }
+  a { color: var(--signal); }
+  :focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+</style>
+
+<div class="deck">
+
+  <header class="deck-head">
+    <div>
+      <h1 class="deck-title">RouteMind Design</h1>
+      <p class="deck-sub">High- and low-level design for the OTA degradation and root-cause layer. How a question becomes a defensible number, and where the model is allowed to touch it.</p>
+    </div>
+    <div class="deck-meta">
+      615,546 trips · May–Jul 2026<br>
+      Spring Boot 4 · Java 24 · Postgres<br>
+      9 metric plugins · 7 chat tools
+    </div>
+  </header>
+
+  <!-- ============ 1. HLD ============ -->
+  <section class="slide">
+    <div class="slide-head">
+      <span class="slide-num">01</span>
+      <div class="slide-titles">
+        <span class="eyebrow">High-level design</span>
+        <h2>The system, and where the model sits</h2>
+      </div>
+    </div>
+    <p class="lede">One Spring Boot service over Postgres. The important property is the <strong>boundary</strong>: every number is computed in Java from SQL before the model is called, so the model can phrase an answer but never produce one.</p>
+
+    <figure class="diagram">
+```mermaid
+flowchart TB
+    subgraph client["Client"]
+        NG["Angular 18<br/>dashboard · alerts · chat"]
+    end
+
+    subgraph api["REST API — :8080/api"]
+        MET["/metrics<br/>/slice"]
+        DIA["/diagnose"]
+        CHT["/chat"]
+        ALR["/alerts"]
+    end
+
+    subgraph domain["Domain — all arithmetic happens here"]
+        DEG["MetricDegradationService<br/>is it degrading, and how"]
+        RCA["OtaRootCauseService<br/>shift-share decomposition"]
+        PLAN["QueryPlanner<br/>which tool answers this"]
+        SQL["SafeSqlExecutor<br/>bounded read, last resort"]
+    end
+
+    subgraph spi["Metric SPI — 9 plugins"]
+        M["ota · cost_per_trip · no_show_rate<br/>experience · safety · utilisation<br/>ev_share · worst_product · penalty"]
+    end
+
+    PG[("Postgres<br/>615K trips · 1.6M employees<br/>620K billing · 513K feedback")]
+    LLM{{"Sarvam<br/>sarvam-105b"}}
+
+    NG --> MET & DIA & CHT & ALR
+    MET --> DEG
+    DIA --> RCA
+    CHT --> PLAN
+    PLAN -->|"1. an existing service first"| DEG & RCA
+    PLAN -.->|"2. only if none fits"| SQL
+    DEG --> M
+    RCA --> PG
+    M --> PG
+    SQL --> PG
+    PLAN -.->|"pick a tool · phrase the answer<br/>never compute a number"| LLM
+
+    classDef model fill:#FAF0DE,stroke:#B4741A,color:#12161C
+    classDef store fill:#E7EFF8,stroke:#1F5FA8,color:#12161C
+    class LLM model
+    class PG store
+```
+      <figcaption><strong>The model is on a dotted line.</strong> Every solid arrow is deterministic Java and SQL; the two dotted arrows are the only places an LLM is consulted — to choose a tool, and to phrase the one-sentence answer. Cut both and the product still answers, in template prose.</figcaption>
+    </figure>
+
+    <div class="stat-row">
+      <div class="stat"><span class="stat-v">9</span><span class="stat-l">metric plugins, each self-registering</span></div>
+      <div class="stat"><span class="stat-v">7</span><span class="stat-l">chat tools, API before SQL</span></div>
+      <div class="stat"><span class="stat-v">2</span><span class="stat-l">SQL attempts, then stop</span></div>
+      <div class="stat"><span class="stat-v">0</span><span class="stat-l">numbers produced by the model</span></div>
+    </div>
+  </section>
+
+  <!-- ============ 2. LLD: detection ============ -->
+  <section class="slide">
+    <div class="slide-head">
+      <span class="slide-num">02</span>
+      <div class="slide-titles">
+        <span class="eyebrow">Low-level design · detection</span>
+        <h2>Deciding a metric is degrading</h2>
+      </div>
+    </div>
+    <p class="lede">The window is split into six buckets and asked two questions — is it drifting, and did the last bucket break from the run before it. Then a second gate asks whether it is <em>close enough to the target to matter</em>, which is what separates a signal from noise.</p>
+
+    <figure class="diagram">
+```mermaid
+flowchart TB
+    A["Metric over the window"] --> B["Split into 6 buckets<br/>≥50 samples each"]
+    B --> C{"series length ≥ 3?"}
+    C -->|no| D["INSUFFICIENT_DATA"]
+    C -->|yes| E["slope = OLS across buckets<br/>stepZ = last vs run, in σ"]
+    E --> F{"stepZ ≥ 2.0<br/>AND step ≥ meaningful?"}
+    F -->|yes| G["SUDDEN<br/>an incident"]
+    F -->|no| H{"worsenSlope ≥<br/>meaningful × 0.5?"}
+    H -->|yes| I["INCREMENTAL<br/>a drift"]
+    H -->|no| J["STABLE / IMPROVING"]
+
+    G --> K{"alert gate"}
+    I --> K
+    J --> L{"already BREACH?"}
+    L -->|yes| K
+    L -->|no| M["not on the board"]
+
+    K -->|"SUDDEN — any level"| N["ON THE BOARD"]
+    K -->|"slide within 10% of target"| N
+    K -->|"BREACH, any shape"| N
+    K -.->|"slide comfortably clear"| M
+
+    classDef bad fill:#FAE9E6,stroke:#A63328,color:#12161C
+    classDef ok fill:#E5F0EA,stroke:#2E6B4F,color:#12161C
+    classDef drop fill:#F3F4F1,stroke:#8A93A0,color:#12161C
+    class G,I,N bad
+    class J ok
+    class M,D drop
+```
+      <figcaption><strong>The gate on the right is the part that was missing.</strong> Shape alone put "EV share sliding to 10.9% against a 9.0% floor" on the board as a trend to get ahead of — while it sat 21% clear of target. A slide now has to be near the target it would breach; a sudden step and an existing breach still always surface.</figcaption>
+    </figure>
+
+    <div class="cols c2">
+      <div>
+        <h3>Thresholds</h3>
+        <pre><span class="cmt">// normalised so positive always means worse</span>
+worsenSlope = higherBetter ? -slope : slope
+worsenStep  = higherBetter ? (runMean - last)
+                           : (last - runMean)
+stepZ       = worsenStep / runSd
+
+<span class="cmt">// sub-noise wiggles are not signals</span>
+meaningful  = max(0.5, level * 0.02)
+
+<span class="cmt">// and the at-risk band is PROPORTIONAL</span>
+margin = min(atRiskMargin, |target| * 5%)</pre>
+      </div>
+      <div>
+        <h3>Why the margin had to be proportional</h3>
+        <div class="scroll-x">
+          <table>
+            <thead><tr><th>Metric</th><th class="num">Target</th><th class="num">Flat 2.0</th><th class="num">5% cap</th></tr></thead>
+            <tbody>
+              <tr><td>ota</td><td class="num">95.0</td><td class="num">2.1%</td><td class="num">2.00</td></tr>
+              <tr><td>cost_per_trip</td><td class="num">1400</td><td class="num">0.1%</td><td class="num">2.00</td></tr>
+              <tr><td>ev_share</td><td class="num">9.0</td><td class="num"><span class="pill p-red">22%</span></td><td class="num">0.45</td></tr>
+              <tr><td>experience</td><td class="num">4.85</td><td class="num"><span class="pill p-red">41%</span></td><td class="num">0.24</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note" style="margin-top:12px">A flat 2.0-unit warning band is 2% of an OTA target and 41% of a rating target. One setting, wildly different meanings — which is how a healthy metric got flagged at risk.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 3. LLD: RCA ============ -->
+  <section class="slide">
+    <div class="slide-head">
+      <span class="slide-num">03</span>
+      <div class="slide-titles">
+        <span class="eyebrow">Low-level design · root cause</span>
+        <h2>Decomposing the drop</h2>
+      </div>
+    </div>
+    <p class="lede">Shift-share decomposition. For each slice: how many <em>extra</em> late trips it added versus the prior window, converted into the points of total OTA it explains. Additive, so the drivers rank and sum back to the headline.</p>
+
+    <figure class="diagram">
+```mermaid
+flowchart LR
+    Q["OTA fell 2.0 pts<br/>97.4% → 95.4%"] --> D1["by direction"]
+    Q --> D2["by shift band"]
+    Q --> D3["by product"]
+    Q --> D4["by office"]
+    Q --> D5["by vendor"]
+    Q --> RM["cause mix<br/>delay_reason"]
+
+    D1 --> R1["LOGIN −1.76 pts<br/>95.6% → 91.8%"]
+    D2 --> R2["MORNING −1.37 pts<br/>94.7% → 89.5%"]
+    D3 --> R3["CAB −1.21 · BUS −0.80"]
+    D4 --> R4["Denver −0.90 pts<br/>96.9% → 93.8%"]
+    D5 --> R5["Sanjay M. −0.33 pts"]
+    RM --> R6["DRIVER 29.5% → 33.2%<br/>the controllable share"]
+
+    R1 & R2 & R3 & R4 & R5 & R6 --> EV["each row carries<br/>its own evidenceSql"]
+
+    classDef hot fill:#FAE9E6,stroke:#A63328,color:#12161C
+    classDef ev fill:#E7EFF8,stroke:#1F5FA8,color:#12161C
+    class R1,R2 hot
+    class EV ev
+```
+      <figcaption><strong>Five lenses on one drop, not a partition.</strong> A Denver morning CAB trip appears in three rows, so each dimension is ranked within itself. The SQL that produced each driver ships inside the API response — which is what makes a finding an escalation rather than an opinion.</figcaption>
+    </figure>
+
+    <p class="note">Verified against raw SQL: 214,912 trips, 97.06% July OTA, prior window 210,419 / 95.41%, reason mix TRAFFIC 42.6→44.8, DRIVER 33.2→30.9, EMPLOYEE 24.3→24.4. Every figure in this deck matches the database to the digit.</p>
+  </section>
+
+  <!-- ============ 4. LLD: chat sequence ============ -->
+  <section class="slide">
+    <div class="slide-head">
+      <span class="slide-num">04</span>
+      <div class="slide-titles">
+        <span class="eyebrow">Low-level design · chat</span>
+        <h2>A question, end to end</h2>
+      </div>
+    </div>
+    <p class="lede">The model is consulted three times and never for a number: who is asking, which analysis answers it, and how to phrase the one-line reply. Everything between those is Java over SQL.</p>
+
+    <figure class="diagram">
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant C as ChatController
+    participant P as PersonaClassifier
+    participant Q as QueryPlanner
+    participant S as Services
+    participant DB as Postgres
+    participant L as Sarvam
+
+    U->>C: "why is OTA down on the night shift?"
+    C->>P: classify(question)
+    alt cached
+        P-->>C: TRANSPORT_MANAGER
+    else
+        P->>L: persona-classify (40 tok)
+        L-->>P: TRANSPORT_MANAGER
+    end
+
+    C->>Q: plan(question)
+    Q->>Q: extractFilters → shiftBand=NIGHT
+    Q->>L: tool-routing (40 tok)
+    L-->>Q: OTA_ROOT_CAUSE + filters
+
+    C->>S: run the chosen tool only
+    S->>DB: parameterised SQL
+    DB-->>S: rows
+    S-->>C: facts + benchmark
+
+    C->>L: chat-answer (200 tok)<br/>facts only, one sentence
+    L-->>C: persona-voiced line
+    C-->>U: ANSWER + WHY + ACTION + BENCHMARK + EVIDENCE
+
+    Note over C,L: any LLM step failing<br/>falls back to template prose
+```
+      <figcaption><strong>Three small model calls, not one big one.</strong> An earlier design handed the model the whole analysis to re-emit; it reasoned past 8,700 tokens without finishing and padded what it did produce with hypotheticals. Asking only for the answer line costs ~80 tokens and finishes in under a second.</figcaption>
+    </figure>
+
+    <div class="cols c2">
+      <div>
+        <h3>Tool selection — API first, SQL last</h3>
+        <div class="scroll-x">
+          <table>
+            <thead><tr><th>Tool</th><th>Answers</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">OTA_ROOT_CAUSE</td><td>why OTA moved</td></tr>
+              <tr><td class="mono">DEGRADING_METRICS</td><td>what is going wrong</td></tr>
+              <tr><td class="mono">SLA_COMPLIANCE</td><td>who missed their contract</td></tr>
+              <tr><td class="mono">METRIC_WITH_CONTEXT</td><td>how is one metric doing</td></tr>
+              <tr><td class="mono">SHIFT_READINESS</td><td>who on my team was late</td></tr>
+              <tr><td class="mono">REPEAT_OFFENDERS</td><td>who is <em>consistently</em> bad</td></tr>
+              <tr><td class="mono">VENDOR_PENALTIES</td><td>who carries the penalties</td></tr>
+              <tr><td class="mono">SQL_FALLBACK</td><td>none of the above</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <h3>The SQL fence</h3>
+        <div>
+          <div class="guard"><span class="guard-m" style="color:var(--green)">1</span><span><strong>Read only.</strong> A single leading SELECT/WITH; one statement.</span></div>
+          <div class="guard"><span class="guard-m" style="color:var(--green)">2</span><span><strong>Allow-listed tables.</strong> No catalogues, no <code>pg_*</code>.</span></div>
+          <div class="guard"><span class="guard-m" style="color:var(--green)">3</span><span><strong>Pre-filtered.</strong> Period and business unit bound by <em>us</em> — the model cannot widen its own slice.</span></div>
+          <div class="guard"><span class="guard-m" style="color:var(--green)">4</span><span><strong>Bounded.</strong> Row cap and query timeout.</span></div>
+          <div class="guard"><span class="guard-m" style="color:var(--green)">5</span><span><strong>Two attempts.</strong> Then answer from the API facts and say so.</span></div>
+        </div>
+        <p class="note" style="margin-top:12px">14 unit tests hold this fence, including the regex bug that would have rejected every valid query — silently disabling the fallback entirely.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 5. LLD: alerting ============ -->
+  <section class="slide">
+    <div class="slide-head">
+      <span class="slide-num">05</span>
+      <div class="slide-titles">
+        <span class="eyebrow">Low-level design · delivery</span>
+        <h2>Scheduling and alerting</h2>
+      </div>
+    </div>
+    <p class="lede">The scheduler ticks on a fixed interval and reads <em>when</em> from the database, so a cadence changes from the UI rather than a redeploy. Alerts land in the app, so the whole loop runs with no mail server.</p>
+
+    <figure class="diagram">
+```mermaid
+stateDiagram-v2
+    [*] --> Armed: schedule created<br/>next_run_at computed from cron
+    Armed --> Due: now() ≥ next_run_at
+    Due --> Generating: ReportService.run()
+    Generating --> Suppressed: nothing actionable<br/>or inside cooldown
+    Generating --> Delivered: actionable
+    Delivered --> Inbox: IN_APP → in_app_alert
+    Suppressed --> Armed: re-arm, status recorded
+    Inbox --> Armed: re-arm from cron
+    Inbox --> Read: viewer opens it
+    Read --> [*]
+
+    note right of Armed
+        The tick is the only fixed timing.
+        Everything about WHEN comes from the row.
+    end note
+    note right of Suppressed
+        A quiet week is recorded, not silent —
+        SUPPRESSED with a reason, so it is never
+        confused with a broken job.
+    end note
+```
+      <figcaption><strong>Re-arming happens on every path, including failure.</strong> A schedule that stops rescheduling itself when something goes wrong goes quiet permanently and nobody notices — which is exactly what a bug in the due-query caused: every schedule took the "first sighting, arm only" branch forever and no report ever ran.</figcaption>
+    </figure>
+
+    <div class="cols c3">
+      <div>
+        <h3>What runs</h3>
+        <div class="scroll-x">
+          <table>
+            <thead><tr><th>Alert</th><th>Cadence</th></tr></thead>
+            <tbody>
+              <tr><td>TM signals</td><td class="mono">wkdays 07:00</td></tr>
+              <tr><td>Weekly detail</td><td class="mono">Mon 08:00</td></tr>
+              <tr><td>FH briefing</td><td class="mono">1st 08:00</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <h3>Dedupe</h3>
+        <p style="font-size:13px;color:var(--slate);margin:0">One live alert per persona + unit + headline + day. Re-triggering <em>replaces</em> what is on screen rather than stacking a copy, so the UI button is safe to press twice.</p>
+      </div>
+      <div>
+        <h3>Channels are plugins</h3>
+        <p style="font-size:13px;color:var(--slate);margin:0">Subscriptions reference a channel by <code>kind()</code>, never an address. <code>IN_APP</code> is always available; <code>EMAIL</code> reports itself unavailable rather than throwing.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 6. Cost ============ -->
+  <section class="slide">
+    <div class="slide-head">
+      <span class="slide-num">06</span>
+      <div class="slide-titles">
+        <span class="eyebrow">Operating the model</span>
+        <h2>What the LLM costs, and where</h2>
+      </div>
+    </div>
+    <p class="lede"><code>sarvam-105b</code> is a reasoning model: it emits a chain of thought before any answer, and that thinking is billed against <code>max_tokens</code>. Budgeting only for the answer length made every reply return <code>finish_reason: length</code> with <code>content: null</code> — indistinguishable from "no model configured".</p>
+
+    <div class="cols c-3-2">
+      <div>
+        <h3>Measured, per call</h3>
+        <div class="scroll-x">
+          <table>
+            <thead><tr><th>Purpose</th><th class="num">Tokens</th><th class="num">Latency</th><th>Cached by</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">ota-narrative</td><td class="num">7,636</td><td class="num">54s</td><td>period + unit + movement</td></tr>
+              <tr><td class="mono">tool-routing</td><td class="num">1,011</td><td class="num">8s</td><td>question text</td></tr>
+              <tr><td class="mono">persona-classify</td><td class="num">730</td><td class="num">9s</td><td>question text</td></tr>
+              <tr><td class="mono">chat-answer</td><td class="num">81</td><td class="num">1s</td><td>— cheap enough</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note" style="margin-top:13px">Routing and persona are pure functions of the question text, so the same question never pays twice. The narrative is keyed on the numbers themselves. Only a real answer is cached — caching a fallback would pin the endpoint to template text for the life of the process after one transient failure.</p>
+      </div>
+      <div>
+        <h3>Every call is traced</h3>
+        <pre>GET /api/chat/trace
+
+<span class="cmt">// purpose · outcome · ms · tokens</span>
+persona-classify  <span class="kw">OK</span>     9168ms  730
+tool-routing      <span class="kw">OK</span>     7760ms 1011
+ota-narrative     <span class="kw">OK</span>    53735ms 7636
+chat-answer       <span class="kw">OK</span>      955ms   81</pre>
+        <p class="note" style="margin-top:12px">Two reasons this is a table and not a log line: <strong>cost</strong>, because a reasoning model bills its thinking; and <strong>trust</strong>, because "the model never invents a number" is only checkable if you can see what it was asked.</p>
+      </div>
+    </div>
+
+    <div>
+      <h3>Grounding</h3>
+      <div class="cols c3">
+        <div><div class="guard"><span class="guard-m" style="color:var(--green)">✓</span><span>Only this operation's own data</span></div></div>
+        <div><div class="guard"><span class="guard-m" style="color:var(--red)">✕</span><span>No internet, no industry averages, no general knowledge</span></div></div>
+        <div><div class="guard"><span class="guard-m" style="color:var(--amber)">→</span><span>No data? <em>"Still working on it — our data doesn't cover that yet."</em></span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 7. Extension ============ -->
+  <section class="slide">
+    <div class="slide-head">
+      <span class="slide-num">07</span>
+      <div class="slide-titles">
+        <span class="eyebrow">Extension points</span>
+        <h2>Adding to it without editing it</h2>
+      </div>
+    </div>
+    <p class="lede">Three SPIs and a config file. A new metric, a new report and a new delivery channel are each one class; a new tenant is neither.</p>
+
+    <figure class="diagram">
+```mermaid
+flowchart LR
+    subgraph add["Add a class"]
+        A1["implements MetricDefinition<br/>@Component"]
+        A2["implements ReportGenerator<br/>key() = generator_key"]
+        A3["implements NotificationChannel<br/>kind() = SLACK"]
+    end
+
+    subgraph auto["Happens automatically"]
+        B1["registered · benchmarked<br/>rule-evaluated · narrated<br/>persona-routed"]
+        B2["schedulable from the UI<br/>stored · facts queryable"]
+        B3["selectable per subscription"]
+    end
+
+    subgraph cfg["Change config only"]
+        C1["targets · tolerances<br/>persona → metric routing<br/>cadence · exclusions"]
+    end
+
+    A1 --> B1
+    A2 --> B2
+    A3 --> B3
+    C1 --> D["a new tenant<br/>no code, no deploy"]
+
+    classDef good fill:#E5F0EA,stroke:#2E6B4F,color:#12161C
+    class D good
+```
+      <figcaption><strong>Nothing below the line knows about personas; nothing above it knows about SQL.</strong> Adding a metric touches one file — the metric board, the rule evaluator, the narrative layer and the persona router all pick it up from the registry.</figcaption>
+    </figure>
+
+    <div class="cols c3">
+      <div>
+        <h3>Everything degrades</h3>
+        <p style="font-size:13px;color:var(--slate);margin:0">No LLM key → template narrative. No SMTP → in-app only. No Kafka → historical-pattern prediction. The demo runs end to end on a laptop.</p>
+      </div>
+      <div>
+        <h3>Virtual threads</h3>
+        <p style="font-size:13px;color:var(--slate);margin:0">The workload is blocking I/O, so each request gets a cheap virtual thread and the connection pool — not the thread pool — is the real limit. JEP 491 removed the JDBC pinning that made this counterproductive.</p>
+      </div>
+      <div>
+        <h3>Tested where it matters</h3>
+        <p style="font-size:13px;color:var(--slate);margin:0">166 tests. The SQL fence, the alert band, the persona routing and the trend maths are all pinned — they are the parts where a silent wrong answer is possible.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>RouteMind · figures computed live from the loaded dataset · docs/routemind-design-deck.html</footer>
+</div>

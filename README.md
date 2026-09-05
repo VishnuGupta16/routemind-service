@@ -8,7 +8,11 @@ Postgres dataset, for **all three personas**.
 how degrading metrics are detected, how OTA is decomposed into root causes, what the LLM
 is allowed to do, and the architecture.
 
-📐 **[Architecture](docs/architecture.md)** · 🧪 **[Chatbot evaluation](docs/chatbot-evaluation.md)**
+📐 **[Design deck — HLD & LLD](https://claude.ai/code/artifact/05432731-1ff8-4e37-9653-c40cc29672be)** ([source](docs/routemind-design-deck.html)) —
+mermaid diagrams of the system boundary, the detection gate, the RCA decomposition, the
+chat sequence and the alert lifecycle.
+
+📄 **[Architecture notes](docs/architecture.md)** · 🧪 **[Chatbot evaluation](docs/chatbot-evaluation.md)**
 
 ### The chatbot answers only from this data
 
