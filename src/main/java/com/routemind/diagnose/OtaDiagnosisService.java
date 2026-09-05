@@ -7,7 +7,9 @@ import com.routemind.llm.LlmChat;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * "Why is OTA down?" — answered TWO ways, side by side, on purpose.
@@ -87,7 +89,34 @@ public class OtaDiagnosisService {
                 d, ruleBased, ai);
     }
 
+    /**
+     * The AI narrative is the single most expensive thing the product does — measured at
+     * ~7,600 completion tokens and 50s on sarvam-105b, because the model reasons at length
+     * over the whole decomposition. It is also perfectly cacheable: the same period, the
+     * same business unit and the same numbers always deserve the same paragraph.
+     *
+     * Without this every page view and every chat question re-paid that cost, which is
+     * what made a repeated question slower rather than instant.
+     */
+    private final Map<String, Track> aiCache = new ConcurrentHashMap<>();
+
     private Track aiTrack(Diagnosis d) {
+        // Key on the period, the unit and the actual movement: if the numbers are the
+        // same, the narrative over them is the same.
+        String key = d.periodStart() + "|" + d.periodEnd() + "|" + d.businessUnit()
+                + "|" + d.otaNow() + "|" + d.otaPrev();
+        Track cached = aiCache.get(key);
+        if (cached != null) return cached;
+
+        Track fresh = buildAiTrack(d);
+        // Only a real LLM answer is worth keeping — caching the fallback would pin the
+        // endpoint to the deterministic text for the rest of the process's life after one
+        // transient failure.
+        if ("LLM".equals(fresh.source())) aiCache.put(key, fresh);
+        return fresh;
+    }
+
+    private Track buildAiTrack(Diagnosis d) {
         // 260 was the ANSWER length, and a multi-dimension decomposition is a long fact
         // sheet to reason over — the reply came back finish_reason=length with no content,
         // which is why the AI track silently mirrored the rule-based one.

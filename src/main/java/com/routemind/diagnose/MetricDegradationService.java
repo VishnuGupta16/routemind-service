@@ -75,19 +75,47 @@ public class MetricDegradationService {
                          String reason,           // one plain sentence: what and why
                          List<Bucket> series) {}
 
-    /** Every metric that is degrading, most urgent first. */
+    /**
+     * Every metric that is degrading AND close enough to its target to matter, most urgent
+     * first.
+     *
+     * Shape alone is not a reason to alert. A metric drifting from 12% to 10.9% against a
+     * 9% floor is sliding in the worsening direction and still comfortably fine — reporting
+     * that as "a trend to get ahead of before it breaches" is noise, and noise is what
+     * makes an alert stream get ignored. So a slide only counts once the value is within
+     * {@link #ALERT_BAND_PCT} of the target, or already the wrong side of it.
+     *
+     * A SUDDEN step is exempt: a sharp break from a stable run is worth knowing about even
+     * from a healthy level, because it is usually an incident rather than a drift.
+     */
     public List<Signal> degrading(LocalDate from, LocalDate to, String businessUnit) {
         List<Signal> out = new ArrayList<>();
         for (String id : metrics.metricIds()) {
             signal(id, from, to, businessUnit).ifPresent(s -> {
-                if (s.shape() != Shape.STABLE && s.shape() != Shape.IMPROVING
-                        && s.shape() != Shape.INSUFFICIENT_DATA) {
+                boolean worsening = s.shape() == Shape.SUDDEN || s.shape() == Shape.INCREMENTAL;
+                if (worsening && (s.shape() == Shape.SUDDEN || nearTarget(s))) {
                     out.add(s);
                 }
             });
         }
         out.sort(Comparator.comparingDouble(Signal::urgency).reversed());
         return out;
+    }
+
+    /**
+     * How close to the target a sliding metric must be before the slide is worth raising,
+     * as a percentage of the target itself — proportional, so it works for a 4.85 rating
+     * and a ₹1,400 cost without a per-metric threshold.
+     */
+    private static final double ALERT_BAND_PCT = 10.0;
+
+    /** Already breaching, or within the band where a continued slide would breach. */
+    static boolean nearTarget(Signal s) {
+        if (!"MET".equals(s.status()) && !"OK".equals(s.status())) return true;
+        double target = s.target();
+        if (target == 0) return true;
+        double band = Math.abs(target) * (ALERT_BAND_PCT / 100.0);
+        return Math.abs(s.latest() - target) <= band;
     }
 
     /** Every metric with its shape, degrading or not — the fuller operational board. */
