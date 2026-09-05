@@ -1,0 +1,35 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '4.0.0'
+}
+
+group = 'com.routemind'
+version = '0.1.0'
+
+ext {
+    springBootVersion = '4.0.0'
+}
+
+java {
+    // Java 24: JEP 491 removed virtual-thread pinning in synchronized blocks,
+    // which is what previously limited virtual threads under JDBC drivers.
+    toolchain { languageVersion = JavaLanguageVersion.of(24) }
+}
+
+repositories { mavenCentral() }
+
+dependencies {
+    // Spring Boot 4 uses Gradle's native BOM support instead of the
+    // io.spring.dependency-management plugin.
+    implementation platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
+
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+    implementation 'org.springframework.kafka:spring-kafka'   // live GPS stream
+    runtimeOnly   'org.postgresql:postgresql'
+
+    testImplementation platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+tasks.named('test') { useJUnitPlatform() }

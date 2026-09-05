@@ -1,0 +1,159 @@
+spring:
+  application:
+    name: routemind-service
+
+  # Virtual threads (Java 24 + Boot 4). Our work is blocking I/O — Postgres queries
+  # and one outbound LLM call — so each request gets a cheap virtual thread instead
+  # of holding a platform thread. Directly serves the "latency at enterprise volume"
+  # criterion. JDK 24 (JEP 491) removes the synchronized-block pinning that used to
+  # make this counterproductive with JDBC drivers.
+  threads:
+    virtual:
+      enabled: true
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/routemind
+    username: routemind
+    password: pass
+    hikari:
+      # With virtual threads the app can accept far more concurrent requests, so the
+      # connection pool — not the thread pool — becomes the real limit. Size it to the
+      # database, not to the request count.
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 10000
+
+server:
+  port: 8080
+
+# =====================================================================
+# The RuleSet — every threshold, target and routing rule lives here.
+# A new tenant is a config change, never a code change.
+# =====================================================================
+routemind:
+
+  sla:
+    ota-window-minutes: 10      # a trip is "on time" within this many minutes
+
+    # The +/- deviation allowed around a target before the verdict changes:
+    #     value >= target                       -> MET
+    #     target - margin <= value < target      -> AT_RISK   (inside the band)
+    #     value < target - margin                -> BREACH
+    #
+    # This is only the FALLBACK. Each sla_policy row carries its own `tolerance_pct`,
+    # because a 97% premium contract and a 90% shuttle contract do not deserve the same
+    # slack. This value applies where a policy leaves it null.
+    #
+    # 2.0 points is our own choice, not a contractual figure — no tolerance was given to
+    # us. It is deliberately wide enough that a rounding-level miss reads as a warning
+    # rather than a breach, and narrow enough that a real slide still escalates.
+    # [open-questions.md A11 — the real contractual tolerance is unknown]
+    at-risk-margin: 2.0
+    # The dataset contains delay_minutes up to 10,644 (7.4 days) — data artefacts.
+    # They don't affect OTA (a threshold count) but inflate MEAN delay ~15%, which
+    # would corrupt predictions. Delays are capped here, not dropped, so the trip
+    # still counts as late.
+    max-credible-delay-minutes: 240
+
+  # metric id -> target. CALIBRATED AGAINST THE REAL DATA (see docs/data-insights.md).
+  #
+  # Naive targets made five of seven metrics permanently red and one never fire —
+  # which defeats the whole "surface what matters" premise. Two kinds of target:
+  #
+  #   CONTRACTUAL  a real negotiated SLA -> absolute threshold
+  #   OPERATIONAL  no SLA exists -> set near observed normal, so DEVIATION is the signal
+  #
+  # Aspirational goals (EV 25%, utilisation 70%) belong in the facilities-head report
+  # as a goal gap, NOT in the alert stream where they would fire every day forever.
+  targets:
+    ota: 95.0                    # CONTRACTUAL — actual 96.4%; vendors/shifts breach individually
+    no_show_rate: 8.0            # operational — actual 7.2%
+    cost_per_trip: 1400.0        # operational — actual mean ₹1,336
+    experience: 4.85             # operational — actual 4.89 (0.4% one-star); a DIP is the signal
+    safety_alerts_per_1k: 90.0   # operational — actual 84
+    seat_utilisation: 55.0       # operational floor — actual 59.1% (strategic goal is 70%)
+    ev_share: 9.0                # operational floor — actual 10.1% (ESG goal is 25%)
+    worst_product_ota: 92.0      # weakest SCHEDULABLE cab type; BUS is the laggard at 92.9%
+    # RISK metric, not a performance one. Penalties are rare and lumpy, so this is a
+    # tripwire: the point is to notice a month where exposure jumps, not to manage an
+    # average down. Actual over May-Jul is 1.83% of billing — but 94.6% of that sits on a
+    # single vendor/contract, which is the finding itself. [open-questions.md A1]
+    penalty_exposure: 0.5
+
+
+  # Aspirational goals — reported as a gap for the strategic persona, never alerted on.
+  goals:
+    seat_utilisation: 70.0
+    ev_share: 25.0
+
+  # PER-METRIC product exclusions — metricId -> product types that metric ignores.
+  #
+  # SPOT_2.0 is a RENTAL cab (route_source RENTLZ, no planned_km, always LOGIN). A rental
+  # is booked for a job, not scheduled against a pickup commitment, so it has NO on-time
+  # target and must be left out of OTA. It still costs money, has a vendor, burns fuel and
+  # can raise safety alerts — so it stays in every other metric.
+  #
+  # This is deliberately per-metric rather than global: excluding a service line from
+  # everything hides real spend and real risk.
+  metric-exclusions:
+    ota: [SPOT_2.0]
+    worst_product_ota: [SPOT_2.0]
+
+  attribution:
+    top-n: 3
+
+  trigger:
+    enabled: true
+    cron: "0 0 7 * * *"         # proactive scan, 07:00 daily
+    trend-drop-units: 3.0       # a fall this large vs prior period raises a finding
+    cooldown-days: 3            # don't re-alert the same thing for N days
+
+  # Persona routing — which metrics each persona owns.
+  # Remove a persona here and it simply stops being served; add metric ids to change scope.
+  personas:
+    TRANSPORT_MANAGER:
+      - ota
+      - no_show_rate
+      - safety_alerts_per_1k
+    FACILITIES_HEAD:
+      - cost_per_trip
+      - ota
+      - safety_alerts_per_1k
+      - experience
+      - seat_utilisation
+      - ev_share
+    LINE_MANAGER:
+      - ota
+      - no_show_rate
+
+  narrative:
+    sarvam:
+      enabled: false            # true + api-key => LLM narrative, else deterministic
+      api-key: ""
+      model: sarvam-105b
+
+  # ---- live GPS layer -------------------------------------------------
+  live:
+    # KEYED   = vendor×office×shift averages (cheap, robust)
+    # SIMILAR = k-NN similarity search over historical trips (conditions on
+    #           the trip's CURRENT state, not just static keys)
+    prior-strategy: KEYED
+    kafka:
+      enabled: false            # true => consume the GPS stream and alert in-flight
+      topic: cab.gps
+      group-id: routemind-live
+
+# Only used when routemind.live.kafka.enabled = true
+spring.kafka:
+  bootstrap-servers: localhost:9092
+  consumer:
+    auto-offset-reset: latest
+    key-deserializer: org.apache.kafka.common.serialization.LongDeserializer
+    value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+    properties:
+      spring.json.value.default.type: com.routemind.live.GpsEvent
+      spring.json.trusted.packages: com.routemind.live
+
+logging:
+  level:
+    com.routemind: INFO
