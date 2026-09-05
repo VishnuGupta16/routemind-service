@@ -1,0 +1,162 @@
+# Schema contracts — what each monthly drop MUST look like before we ingest it.
+#
+# Every rule here was learned from the May–July 2026 data. If August arrives with a
+# renamed column, a new delay_reason, or a fresh dtype drift, validation catches it
+# BEFORE anything reaches Postgres — instead of silently producing wrong metrics.
+#
+# severity:  fail = stop the pipeline   warn = ingest but flag   info = record only
+
+defaults:
+  unexpected_column: warn        # new column appears -> warn, don't block
+  missing_optional: warn
+  null_rate_tolerance: 0.05      # +5pp drift vs the declared baseline before warning
+
+sources:
+
+  # ------------------------------------------------------------------ trips
+  trips:
+    file_glob: "Ride_data*.csv"
+    grain: one row per trip
+    min_rows: 100000             # a month well below this is a truncated export
+    max_rows: 400000
+    date_column: trip_date
+    date_format: "%B %d, %Y"
+    columns:
+      business_unit:            {type: enum, required: true, null_pct: 0.0,
+                                 values: [vanta-Aus, catalyst-Sac, orbit-Slc, vanta-Sea, pinnacle-Slc]}
+      office:                   {type: string, required: true, null_pct: 0.0}
+      product_type:             {type: enum, required: true, null_pct: 0.0,
+                                 values: [CAB, BUS, SPOT_2.0]}
+      trip_date:                {type: date, required: true, null_pct: 0.0}
+      shift_type:               {type: string, required: true, null_pct: 0.0}
+      trip_id:                  {type: id_comma, required: true, null_pct: 0.0, unique_in_file: true}
+      trip_direction:           {type: enum, required: true, values: [LOGIN, LOGOUT]}
+      actual_escort:            {type: bool, required: true}
+      vendor_id:                {type: string, required: true, null_pct: 0.0}
+      planned_cab_registration: {type: string, required: true, null_pct: 0.001}
+      actual_cab_registration:  {type: string, required: true, null_pct: 0.0}
+      actual_cab_capacity:      {type: int, required: true, min: 1, max: 60}
+      planned_km:               {type: number_comma, required: true, min: 0, max: 1200,
+                                 known_bad_negatives: true}
+      traveled_km:              {type: number_comma, required: true, min: 0, max: 1200}
+      planned_start_epoch:      {type: epoch_comma, required: true}
+      planned_end_epoch:        {type: epoch_comma, required: true}
+      actual_start_epoch:       {type: epoch_comma, required: true}
+      actual_end_epoch:         {type: epoch_comma, required: true}
+      delay_reason:             {type: enum, required: true,
+                                 values: [NODELAY, TRAFFIC, DRIVER, EMPLOYEE]}
+      delay_minutes:            {type: number_comma, required: true, min: 0,
+                                 max: 20000, outlier_above: 240}
+      route_source:             {type: enum, required: true,
+                                 values: [AUTO, MANUAL, SHUTTLE_SERVICE, RENTLZ]}
+      actual_cab_fuel_type:     {type: enum, required: true,
+                                 values: [Petrol, Diesel, Electric]}
+      is_driver_nc:             {type: bool, required: true, null_pct: 0.001}
+      is_cab_nc:                {type: bool, required: true, null_pct: 0.001}
+      trip_nodal:               {type: enum, required: false, null_pct: 0.48,
+                                 values: [HOME, NODAL, SHUTTLE, "NA"]}
+      plannedemployee_cnt:      {type: int, required: true, min: 0, max: 60}
+      actualemployee_cnt:       {type: int, required: true, min: 0, max: 60}
+      noshow_cnt:               {type: int, required: true, min: 0, max: 60}
+
+  # -------------------------------------------------------- trip_employees
+  trip_employees:
+    file_glob: "emp_Data.csv"
+    grain: one row per employee per trip
+    min_rows: 300000
+    date_column: trip_date
+    date_format: "%Y-%m-%d"
+    columns:
+      business_unit:        {type: enum, required: true,
+                             values: [vanta-Aus, catalyst-Sac, orbit-Slc, vanta-Sea, pinnacle-Slc]}
+      office:               {type: string, required: true}
+      product_type:         {type: enum, required: true, values: [CAB, BUS, SPOT_2.0]}
+      trip_date:            {type: date, required: true}
+      shift_type:           {type: string, required: true}
+      trip_id:              {type: id_plain, required: true, null_pct: 0.0}
+      planned_pickup_epoch: {type: epoch_float, required: true, null_pct: 0.07}
+      planned_drop_epoch:   {type: epoch_float, required: true, null_pct: 0.07}
+      actual_pickup_epoch:  {type: epoch_float, required: false, null_pct: 0.12}
+      actual_drop_epoch:    {type: epoch_float, required: false, null_pct: 0.12}
+      planned_km:           {type: number, required: true, min: 0, max: 1500,
+                             known_bad_negatives: true}
+      traveled_km:          {type: number, required: true, min: 0, max: 1500,
+                             known_bad_negatives: true}
+      stwid:                {type: id_plain, required: true, placeholder_value: 0}
+      signintype:           {type: enum, required: false, null_pct: 0.12,
+                             values: [Planned, Adhoc, Guest]}
+      gender:               {type: enum, required: false, null_pct: 0.001,
+                             values: [MALE, FEMALE]}
+      emp_role:             {type: string, required: false, null_pct: 0.001}
+      boarding_status:      {type: enum, required: true,
+                             values: ["Boarded", "Not Boarded"]}
+      not_boarding_reason:  {type: enum, required: false, null_pct: 0.89,
+                             values: [NO_SHOW, TRIP_CANCELLED_FROM_DASHBOARD, NON_COMMUNICATING]}
+      is_no_show:           {type: bool, required: true}
+
+  # ---------------------------------------------------------------- billing
+  billing:
+    file_glob: "bill_data.csv"
+    grain: one row per billed line item
+    min_rows: 100000
+    columns:
+      business_unit: {type: enum, required: true,
+                      values: [vanta-Aus, catalyst-Sac, orbit-Slc, vanta-Sea, pinnacle-Slc]}
+      office:        {type: string, required: true}
+      vendor:        {type: string, required: true}
+      cycle_start:   {type: datetime_long, required: true}
+      cycle_end:     {type: datetime_long, required: true}
+      # NOT id_plain: this column legitimately contains the literal "OverHead"
+      trip_id:       {type: id_or_token, required: true, allowed_tokens: ["OverHead"]}
+      contract:      {type: string, required: false, null_pct: 0.001}
+      slab_name:     {type: string, required: false, null_pct: 0.25}
+      total_trip_km: {type: number, required: true, min: 0, max: 2000}
+      # negative values are SLA PENALTIES (189 lines, -15.5M) deducted from the
+      # vendor — flagged as is_penalty downstream so billing, penalties and net
+      # spend can each be reported separately
+      trip_cost:     {type: number_comma, required: true, min: -3000000, max: 500000,
+                      known_penalties: true}
+
+  # ----------------------------------------------------------------- alerts
+  alerts:
+    file_glob: "alerts_data.csv"
+    grain: one row per alert
+    min_rows: 5000
+    columns:
+      business_unit:    {type: enum, required: true,
+                         values: [vanta-Aus, catalyst-Sac, orbit-Slc, vanta-Sea, pinnacle-Slc]}
+      trip_id:          {type: id_comma, required: true}
+      stwid:            {type: id_comma, required: true, placeholder_value: 0}
+      event_id:         {type: string, required: true, unique_in_file: true}
+      event_type:       {type: enum, required: true, values:
+                          [EMPLOYEE_GEOFENCE_VIOLATION, WOMAN_TRAVELLING_ALONE,
+                           DEVICE_NOT_REACHABLE, VEHICLE_STOPPAGE,
+                           EMPLOYEE_SIGN_OFF_TIME_VIOLATION, PANIC_FIXED_DEVICE,
+                           OVER_SPEEDING, PANIC_DEVICE, PANIC_MOBILE,
+                           FIRST_MALE_NO_SHOW, SUPPLEMENTARY_ALERT]}
+      start_time:       {type: datetime_long, required: true}
+      acknowledge_time: {type: datetime_long, required: false, null_pct: 0.01}
+      state_text:       {type: enum, required: true, values: [NEW, OPEN, CLOSED]}
+      # "False" is known bad data in this column — expected, cleaned to NULL
+      severity:         {type: enum, required: false, null_pct: 0.35,
+                         values: [Sev-1, Sev-2, Sev-3], tolerated_bad: ["False"]}
+      source:           {type: string, required: false, null_pct: 0.80}
+
+  # --------------------------------------------------------------- feedback
+  feedback:
+    file_glob: "trip_feedback.csv"
+    grain: one row per rating response
+    min_rows: 100000
+    columns:
+      business_unit:  {type: enum, required: true,
+                       values: [vanta-Aus, catalyst-Sac, orbit-Slc, vanta-Sea, pinnacle-Slc]}
+      trip_id:        {type: id_comma, required: true}
+      trip_type:      {type: enum, required: true, values: [LOGIN, LOGOUT]}
+      trip_date:      {type: datetime_long, required: true}
+      stwid:          {type: id_comma, required: true}
+      route_rating:   {type: int, required: true, min: 0, max: 5}
+      driver_rating:  {type: int, required: true, min: 0, max: 5}
+      cab_rating:     {type: int, required: true, min: 0, max: 5}
+      safety_rating:  {type: int, required: true, min: 0, max: 5}
+      marshal_rating: {type: int, required: true, min: 0, max: 5}
+      creation_time:  {type: datetime_long, required: true}

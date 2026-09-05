@@ -1,0 +1,202 @@
+# Cleaning rules — STAGE 2 of the ingestion pipeline.
+#
+# Every rule here is traceable to a line in the data dictionary the organisers shipped
+# (`Dictionary/README.md` and the five per-file .md files) or to something the STAGE 1
+# validator found in the actual data. The `why:` field cites the source, so any cleaning
+# decision can be argued for rather than just asserted.
+#
+# This file IS the spec. clean.py is only an interpreter for it — which means a reviewer
+# can audit what happens to the data without reading any Python, and a new rule is a
+# YAML edit rather than a code change.
+#
+# transforms available (see clean.py TRANSFORMS):
+#   text            trim, empty string -> NULL
+#   bigint          strip commas, cast to nullable int64
+#   id_nullable     bigint, but 0 -> NULL  (0 is a documented placeholder, not a rider)
+#   number          strip commas, cast to float
+#   int             strip commas, cast to nullable int64
+#   km              number, but anything < 0.01 -> NULL (negatives are impossible)
+#   rating_1_5      int, but keep only 1..5  (0 means "not rated", not "rated zero")
+#   bool            true/false/1/0/yes/no -> boolean
+#   epoch_ts        epoch seconds (comma-string OR float) -> UTC timestamp
+#   date            parse with `format`, keep the date part
+#   datetime        parse with `format`, keep the full UTC timestamp
+#   na_to_null      text, but the literal "NA" -> NULL
+#   severity        text, but keep only values starting "Sev" (a stray "False" exists)
+#
+# derived columns use `derive:` instead of `from:`.
+
+version: 2
+chunk_rows: 200000
+
+sources:
+
+  # ------------------------------------------------------------------ trips
+  trips:
+    files: "Ride_data*.csv"          # three monthly drops, concatenated
+    table: trips
+    drop_rows_where_null: [trip_id]  # a row with no trip id cannot be joined to anything
+    # DELIBERATELY NOT de-duplicated. trip_id is unique within a month but 6,753 ids
+    # recur across months (dictionary README does not claim global uniqueness). Treating
+    # them as duplicates silently discarded 1.1% of real trips, so the table uses a
+    # surrogate primary key and trip_id is merely indexed.  [see open-questions.md A5]
+    dedupe: null
+    columns:
+      trip_id:              {from: trip_id,                   transform: bigint,
+                             why: "dictionary README quirk 1 — comma-formatted here"}
+      business_unit:        {from: business_unit,             transform: text}
+      office:               {from: office,                    transform: text}
+      product_type:         {from: product_type,              transform: text}
+      trip_date:            {from: trip_date,                 transform: date,
+                             format: "%B %d, %Y",
+                             why: "dictionary README quirk 3 — free-text 'May 1, 2026'"}
+      shift_type:           {from: shift_type,                transform: text}
+      shift_band:           {derive: shift_band,
+                             why: "100 distinct shift times is too granular to configure
+                                   SLAs against (1,316 vendor x cab x shift combinations).
+                                   Six bands cut that to 163, and they separate real
+                                   performance: MORNING 92.3% vs EARLY 99.4% on-time, a
+                                   7.1-point spread. 'Non Shift' and 'Adhoc' are not clock
+                                   times and get their own UNSCHEDULED band — 14,799 trips
+                                   at 86.9%, the worst of the six."}
+      trip_direction:       {from: trip_direction,            transform: text}
+      vendor:               {from: vendor_id,                 transform: text}
+      actual_escort:        {from: actual_escort,             transform: bool}
+      planned_cab_reg:      {from: planned_cab_registration,  transform: text}
+      actual_cab_reg:       {from: actual_cab_registration,   transform: text}
+      actual_cab_capacity:  {from: actual_cab_capacity,       transform: int}
+      planned_km:           {from: planned_km,                transform: km,
+                             why: "dictionary README quirk 6 — negative distances exist"}
+      traveled_km:          {from: traveled_km,               transform: km}
+      planned_start:        {from: planned_start_epoch,       transform: epoch_ts,
+                             why: "dictionary README quirk 4 — epochs are comma-strings"}
+      planned_end:          {from: planned_end_epoch,         transform: epoch_ts}
+      actual_start:         {from: actual_start_epoch,        transform: epoch_ts}
+      actual_end:           {from: actual_end_epoch,          transform: epoch_ts}
+      delay_reason:         {from: delay_reason,              transform: text}
+      delay_minutes:        {from: delay_minutes,             transform: int,
+                             why: "dictionary README quirk 8 — comma-formatted numeric"}
+      route_source:         {from: route_source,              transform: text}
+      fuel_type:            {from: actual_cab_fuel_type,      transform: text}
+      is_driver_nc:         {from: is_driver_nc,              transform: bool,
+                             why: "dictionary README quirk 5 — bool in Jun/Jul, object in May"}
+      is_cab_nc:            {from: is_cab_nc,                 transform: bool}
+      trip_nodal:           {from: trip_nodal,                transform: na_to_null,
+                             why: "literal 'NA' is a missing marker, not a category"}
+      planned_employee_cnt: {from: plannedemployee_cnt,       transform: int}
+      actual_employee_cnt:  {from: actualemployee_cnt,        transform: int}
+      noshow_cnt:           {from: noshow_cnt,                transform: int}
+
+  # -------------------------------------------------------- trip_employees
+  trip_employees:
+    files: "emp_Data.csv"
+    table: trip_employees
+    columns:
+      trip_id:             {from: trip_id,               transform: bigint,
+                            why: "dictionary README quirk 1 — clean int64 in this file"}
+      stwid:               {from: stwid,                 transform: id_nullable,
+                            why: "dictionary README quirk 2 — 0 is a placeholder rider"}
+      business_unit:       {from: business_unit,         transform: text}
+      office:              {from: office,                transform: text}
+      product_type:        {from: product_type,          transform: text}
+      trip_date:           {from: trip_date,             transform: date, format: "%Y-%m-%d",
+                            why: "dictionary README quirk 3 — ISO in this file only"}
+      shift_type:          {from: shift_type,            transform: text}
+      planned_pickup:      {from: planned_pickup_epoch,  transform: epoch_ts}
+      planned_drop:        {from: planned_drop_epoch,    transform: epoch_ts}
+      actual_pickup:       {from: actual_pickup_epoch,   transform: epoch_ts,
+                            why: "dictionary README quirk 9 — null means the leg is incomplete"}
+      actual_drop:         {from: actual_drop_epoch,     transform: epoch_ts}
+      planned_km:          {from: planned_km,            transform: km,
+                            why: "dictionary README quirk 6 — down to -6.63 km"}
+      traveled_km:         {from: traveled_km,           transform: km}
+      signintype:          {from: signintype,            transform: text}
+      gender:              {from: gender,                transform: text}
+      emp_role:            {from: emp_role,              transform: text}
+      boarding_status:     {from: boarding_status,       transform: text}
+      not_boarding_reason: {from: not_boarding_reason,   transform: text,
+                            why: "dictionary README quirk 9 — null means they boarded"}
+      is_no_show:          {from: is_no_show,            transform: bool}
+
+  # ---------------------------------------------------------------- billing
+  billing:
+    files: "bill_data.csv"
+    table: billing
+    columns:
+      trip_id:       {from: trip_id,       transform: bigint,
+                      why: "the literal 'OverHead' is not a trip id and becomes NULL here"}
+      is_overhead:   {derive: trip_id_is_null,
+                      why: "160 rows carry trip_id='OverHead' — a monthly line rather than
+                            a trip line. Flagged rather than dropped so total spend stays
+                            whole while cost-per-trip can exclude it."}
+      is_penalty:    {derive: cost_is_negative,
+                      why: "CONFIRMED by the team: a negative trip_cost is an SLA penalty
+                            deducted from the vendor — not a credit note."}
+      line_kind:     {derive: line_kind,
+                      why: "is_overhead alone conflates two different things, which the data
+                            makes plain: of the 160 monthly lines, 33 are NEGATIVE (a
+                            monthly penalty, as the team confirmed) and 127 are POSITIVE
+                            (+Rs 5.29M — a charge TO the client, so it cannot be a penalty
+                            on the vendor). Splitting them lets penalty exposure be measured
+                            without the fixed charges swamping it.
+                            TRIP           positive line against a real trip
+                            TRIP_PENALTY   negative line against a real trip   (156, -14.67M)
+                            MONTHLY_PENALTY negative monthly line              ( 33,  -0.83M)
+                            FIXED_CHARGE   positive monthly line              (127,  +5.29M)
+                            What the FIXED_CHARGE lines actually buy is still unconfirmed —
+                            see open-questions.md A2."}
+      business_unit: {from: business_unit, transform: text}
+      office:        {from: office,        transform: text}
+      vendor:        {from: vendor,        transform: text}
+      cycle_start:   {from: cycle_start,   transform: date, format: "%B %d, %Y, %I:%M %p"}
+      cycle_end:     {from: cycle_end,     transform: date, format: "%B %d, %Y, %I:%M %p"}
+      contract:      {from: contract,      transform: text}
+      slab_name:     {from: slab_name,     transform: text}
+      total_trip_km: {from: total_trip_km, transform: number,
+                      why: "NOT the km rule — 0 here is a real billed line with no distance
+                            recorded (40% of lines), so it must not be nulled away.
+                            [open-questions.md A7]"}
+      trip_cost:     {from: trip_cost,     transform: number,
+                      why: "dictionary README quirk 8 — comma-formatted numeric"}
+
+  # --------------------------------------------------------------- feedback
+  feedback:
+    files: "trip_feedback.csv"
+    table: feedback
+    columns:
+      trip_id:        {from: trip_id,       transform: bigint}
+      stwid:          {from: stwid,         transform: id_nullable}
+      business_unit:  {from: business_unit, transform: text}
+      trip_type:      {from: trip_type,     transform: text}
+      trip_at:        {from: trip_date,     transform: datetime,
+                       format: "%B %d, %Y, %I:%M %p",
+                       why: "dictionary README quirk 3 — free-text date WITH a time here"}
+      route_rating:   {from: route_rating,   transform: rating_1_5,
+                       why: "0 means not rated; averaging it in would drag every score down"}
+      driver_rating:  {from: driver_rating,  transform: rating_1_5}
+      cab_rating:     {from: cab_rating,     transform: rating_1_5}
+      safety_rating:  {from: safety_rating,  transform: rating_1_5}
+      marshal_rating: {from: marshal_rating, transform: rating_1_5}
+      created_at:     {from: creation_time,  transform: datetime,
+                       format: "%B %d, %Y, %I:%M %p"}
+
+  # ----------------------------------------------------------------- alerts
+  alerts:
+    files: "alerts_data.csv"
+    table: alerts
+    dedupe: [event_id]               # event_id is documented as unique (51,699 of 51,699)
+    columns:
+      event_id:         {from: event_id,         transform: text}
+      trip_id:          {from: trip_id,          transform: bigint}
+      stwid:            {from: stwid,            transform: id_nullable}
+      business_unit:    {from: business_unit,    transform: text}
+      event_type:       {from: event_type,       transform: text}
+      start_time:       {from: start_time,       transform: datetime,
+                         format: "%B %d, %Y, %I:%M %p"}
+      acknowledge_time: {from: acknowledge_time, transform: datetime,
+                         format: "%B %d, %Y, %I:%M %p",
+                         why: "dictionary README quirk 9 — null means unacknowledged"}
+      state_text:       {from: state_text,       transform: text}
+      severity:         {from: severity,         transform: severity,
+                         why: "alerts_data.md — a stray literal 'False' is in this column"}
+      source:           {from: source,           transform: text}

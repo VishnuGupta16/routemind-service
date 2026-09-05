@@ -1,0 +1,144 @@
+{
+  "issues": [
+    {
+      "severity": "INFO",
+      "source": "trips",
+      "column": "delay_minutes",
+      "code": "OUTLIERS",
+      "message": "Ride_data _trip-July_2026.csv: 118 value(s) > 240 \u2014 winsorised downstream",
+      "profile": null,
+      "values": null,
+      "availableFrom": null,
+      "advice": "MEANING: Value outside the range seen historically.\nRECOMMEND: IGNORE\nWHY: Ride_data _trip-July_2026.csv: 118 value(s) > 240 \u2014 winsorised downstream \u2014 no model configured to judge plausibility.\nMETRIC: NONE\n\n(heuristic \u2014 a human decides)"
+    },
+    {
+      "severity": "INFO",
+      "source": "trips",
+      "column": "planned_km",
+      "code": "BELOW_MIN",
+      "message": "Ride_data _trip-June_2026.csv: 1 value(s) < 0 (min -2.00)",
+      "profile": null,
+      "values": null,
+      "availableFrom": null,
+      "advice": null
+    },
+    {
+      "severity": "INFO",
+      "source": "trips",
+      "column": "delay_minutes",
+      "code": "OUTLIERS",
+      "message": "Ride_data _trip-June_2026.csv: 116 value(s) > 240 \u2014 winsorised downstream",
+      "profile": null,
+      "values": null,
+      "availableFrom": null,
+      "advice": "MEANING: Value outside the range seen historically.\nRECOMMEND: IGNORE\nWHY: Ride_data _trip-June_2026.csv: 116 value(s) > 240 \u2014 winsorised downstream \u2014 no model configured to judge plausibility.\nMETRIC: NONE\n\n(heuristic \u2014 a human decides)"
+    },
+    {
+      "severity": "INFO",
+      "source": "trips",
+      "column": "delay_minutes",
+      "code": "OUTLIERS",
+      "message": "Ride_data _trip-may_2026.csv: 131 value(s) > 240 \u2014 winsorised downstream",
+      "profile": null,
+      "values": null,
+      "availableFrom": null,
+      "advice": "MEANING: Value outside the range seen historically.\nRECOMMEND: IGNORE\nWHY: Ride_data _trip-may_2026.csv: 131 value(s) > 240 \u2014 winsorised downstream \u2014 no model configured to judge plausibility.\nMETRIC: NONE\n\n(heuristic \u2014 a human decides)"
+    },
+    {
+      "severity": "WARN",
+      "source": "trips",
+      "column": "trip_nodal",
+      "code": "NULL_RATE_DRIFT",
+      "message": "Ride_data _trip-may_2026.csv: nulls 56.4% vs expected ~48.0%",
+      "profile": null,
+      "values": null,
+      "availableFrom": null,
+      "advice": null
+    },
+    {
+      "severity": "INFO",
+      "source": "trip_employees",
+      "column": "traveled_km",
+      "code": "BELOW_MIN",
+      "message": "emp_Data.csv: 2 value(s) < 0 (min -4.72)",
+      "profile": null,
+      "values": null,
+      "availableFrom": null,
+      "advice": null
+    },
+    {
+      "severity": "WARN",
+      "source": "trip_employees",
+      "column": "trip_date",
+      "code": "MULTI_MONTH_FILE",
+      "message": "emp_Data.csv: spans 3 months",
+      "profile": null,
+      "values": null,
+      "availableFrom": null,
+      "advice": null
+    },
+    {
+      "severity": "INFO",
+      "source": "alerts",
+      "column": "severity",
+      "code": "KNOWN_BAD_VALUE",
+      "message": "alerts_data.csv: contains known-bad ['False'] (cleaned to NULL downstream)",
+      "profile": null,
+      "values": null,
+      "availableFrom": null,
+      "advice": null
+    }
+  ],
+  "stats": {
+    "trips:Ride_data _trip-July_2026.csv": {
+      "date_range": "2026-07-01 \u2192 2026-07-31"
+    },
+    "trips:Ride_data _trip-June_2026.csv": {
+      "date_range": "2026-06-01 \u2192 2026-06-30"
+    },
+    "trips:Ride_data _trip-may_2026.csv": {
+      "date_range": "2026-05-01 \u2192 2026-05-31"
+    },
+    "trips": {
+      "rows": 615546,
+      "files": [
+        "Ride_data _trip-July_2026.csv",
+        "Ride_data _trip-June_2026.csv",
+        "Ride_data _trip-may_2026.csv"
+      ]
+    },
+    "trip_employees:emp_Data.csv": {
+      "date_range": "2026-05-01 \u2192 2026-07-31"
+    },
+    "trip_employees": {
+      "rows": 1637906,
+      "files": [
+        "emp_Data.csv"
+      ]
+    },
+    "billing": {
+      "rows": 620942,
+      "files": [
+        "bill_data.csv"
+      ]
+    },
+    "alerts": {
+      "rows": 51699,
+      "files": [
+        "alerts_data.csv"
+      ]
+    },
+    "feedback": {
+      "rows": 512873,
+      "files": [
+        "trip_feedback.csv"
+      ]
+    }
+  },
+  "counts": {
+    "FAIL": 0,
+    "WARN": 2,
+    "INFO": 6
+  },
+  "verdict": "PASSED WITH WARNINGS"
+}
